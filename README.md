@@ -113,9 +113,14 @@ device-specific nftables DNAT rule for outbound TCP port 1883 plus masquerade.
 `deploy/system/install-system.sh` provisions all of it on an Arch/Omarchy host
 from a private env file; see [docs/network.md](docs/network.md) for why a
 NetworkManager AP profile does not work on single-radio Intel adapters. The box also contacts an Alibaba HTTPS
-authentication endpoint during startup. That bootstrap has not been replaced;
-an offline reconnection attempt was inconclusive. Do not treat this service as
-fully offline until a cold startup with internet blocked has been demonstrated.
+authentication endpoint during startup. A supervised test
+(`deploy/system/offline-test.sh`) blocked only the box's internet for 20 minutes
+after dropping its MQTT session: it resolved its MQTT host and reached the local
+controller, then retried `iot-auth-global.aliyuncs.com:443` and reassociated with
+the hotspot about every 40 s, sending no heartbeats until the block was lifted.
+Reconnection therefore needs the HTTPS bootstrap; the service is not cloud-free.
+Whether the bootstrap could be served locally depends on whether the box validates
+that server's TLS certificate, which has not been tested.
 
 For continuous operation, the host must remain awake and keep the network and
 service running. Systemd units, a root-side installer and deployment guides are
