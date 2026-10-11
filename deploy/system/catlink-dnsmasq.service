@@ -1,0 +1,13 @@
+[Unit]
+Description=CATLINK hotspot DHCP/DNS (dnsmasq)
+After=catlink-hostapd.service
+BindsTo=catlink-hostapd.service
+
+[Service]
+ExecStartPre=/usr/bin/mkdir -p /var/lib/catlink
+ExecStart=/usr/bin/dnsmasq --keep-in-foreground --conf-file=/etc/catlink/dnsmasq.conf
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

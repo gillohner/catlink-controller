@@ -1,6 +1,6 @@
 {
   "url": "http://10.42.0.1:18081/catlink-visits",
-  "username": "catlink",
+  "username": "catlink-push",
   "password": "REPLACE_WITH_PRIVATE_PASSWORD",
   "event_log": "~/.local/state/catlink-local/visits.jsonl",
   "cursor": "~/.local/state/catlink-local/push.cursor"

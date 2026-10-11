@@ -1,0 +1,13 @@
+[Unit]
+Description=CATLINK device-specific MQTT redirection (nftables)
+After=network-pre.target NetworkManager.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nft -f /etc/catlink/catlink.nft
+ExecStop=/usr/bin/nft destroy table ip catlink_local
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

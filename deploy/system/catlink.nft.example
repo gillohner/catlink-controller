@@ -1,0 +1,14 @@
+#!/usr/bin/nft -f
+# Device-specific MQTT redirection plus NAT for the hotspot. Does not touch other
+# tables; ufw's own rules stay intact (ufw must still permit the forwarding).
+destroy table ip catlink_local
+table ip catlink_local {
+  chain prerouting {
+    type nat hook prerouting priority -110; policy accept;
+    iifname "AP_IFACE" ip saddr DEVICE_IP tcp dport 1883 dnat to GATEWAY_IP:CONTROLLER_PORT
+  }
+  chain postrouting {
+    type nat hook postrouting priority 100; policy accept;
+    oifname "UPSTREAM_IFACE" ip saddr HOTSPOT_CIDR masquerade
+  }
+}

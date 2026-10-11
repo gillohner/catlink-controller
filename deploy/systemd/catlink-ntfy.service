@@ -1,0 +1,14 @@
+[Unit]
+Description=Private ntfy server for CATLINK alerts
+# Needs the network so the phone can reach the listener; binds all interfaces.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=%h/.local/bin/ntfy serve --config %h/.config/catlink-local/ntfy-server.yml
+Restart=always
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

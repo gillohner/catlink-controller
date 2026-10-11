@@ -3,9 +3,11 @@
 This is an independent implementation of the MQTT and binary framing observed
 on one owned CATLINK Scooper C08. It is **not yet a complete local replacement**.
 
-Verified on hardware through the packaged controller: receiving raw heartbeat
-frames and setting the clock with a matching device acknowledgement. Cleaning, pause, cancellation, settings,
-additional telemetry field meanings, and cloud-free cold startup remain unverified.
+Verified on hardware through the packaged controller, on two different laptops:
+receiving raw heartbeat frames, setting the clock with a matching device
+acknowledgement, and live entry/exit events delivered to an Android phone through
+the self-hosted ntfy bridge. Cleaning, pause, cancellation, settings, additional
+telemetry field meanings, and cloud-free cold startup remain unverified.
 No movement command is exposed. An optional Home Assistant webhook adapter is included but not verified on HA.
 
 Two labelled physical visits produced entry/exit transitions and completed-visit
@@ -56,16 +58,19 @@ provide arbitrary packet injection.
 
 ## Current network requirements
 
-The research setup uses a NetworkManager shared 2.4 GHz hotspot and a
-device-specific nftables DNAT rule for outbound TCP port 1883. DHCP, DNS, and
-forwarding must work independently. The box also contacts an Alibaba HTTPS
+The deployed setup uses a hostapd 2.4 GHz hotspot on a virtual AP interface,
+a dedicated dnsmasq for DHCP/DNS with a persistent reservation, and a
+device-specific nftables DNAT rule for outbound TCP port 1883 plus masquerade.
+`deploy/system/install-system.sh` provisions all of it on an Arch/Omarchy host
+from a private env file; see [docs/network.md](docs/network.md) for why a
+NetworkManager AP profile does not work on single-radio Intel adapters. The box also contacts an Alibaba HTTPS
 authentication endpoint during startup. That bootstrap has not been replaced;
 an offline reconnection attempt was inconclusive. Do not treat this service as
 fully offline until a cold startup with internet blocked has been demonstrated.
 
 For continuous operation, the host must remain awake and keep the network and
-service running. Example systemd units and deployment guides are included. Network provisioning
-is documented; an automatic network installer is not yet included.
+service running. Systemd units, a root-side installer and deployment guides are
+included.
 
 ## Protocol evidence
 

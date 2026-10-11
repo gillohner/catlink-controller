@@ -1,0 +1,16 @@
+[Unit]
+Description=Create the gilshare0 AP virtual interface for the CATLINK hotspot
+# The AP interface must exist before NetworkManager tries to autoconnect the hotspot.
+Before=NetworkManager.service
+After=sys-subsystem-net-devices-wlp3s0.device
+Wants=sys-subsystem-net-devices-wlp3s0.device
+ConditionPathExists=!/sys/class/net/gilshare0
+
+[Service]
+Type=oneshot
+# Locally administered MAC so the AP does not share the upstream interface's address.
+ExecStart=/usr/bin/iw phy phy0 interface add gilshare0 type __ap addr e2:2b:e9:1a:6d:a7
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

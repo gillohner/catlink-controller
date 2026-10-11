@@ -1,0 +1,16 @@
+# /etc/hostapd/catlink.conf (root, mode 600). WPA2-PSK 2.4 GHz access point for the C08.
+# The channel must equal the upstream station's channel on a single-radio host.
+interface=AP_IFACE
+driver=nl80211
+ssid=HOTSPOT_SSID
+country_code=COUNTRY_CODE
+hw_mode=g
+channel=HOTSPOT_CHANNEL
+ieee80211n=1
+wmm_enabled=1
+auth_algs=1
+wpa=2
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+wpa_passphrase=HOTSPOT_PSK
+ignore_broadcast_ssid=0

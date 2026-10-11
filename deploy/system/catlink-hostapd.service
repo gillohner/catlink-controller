@@ -1,0 +1,18 @@
+[Unit]
+Description=CATLINK GilShare hotspot (hostapd)
+Requires=catlink-ap-interface.service
+After=catlink-ap-interface.service NetworkManager.service
+# The upstream station must already be on the shared channel.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStartPre=/usr/bin/ip link set AP_IFACE down
+ExecStartPre=/usr/bin/ip link set AP_IFACE address AP_MAC
+ExecStartPre=/usr/bin/ip addr replace GATEWAY_IP/24 dev AP_IFACE
+ExecStart=/usr/bin/hostapd /etc/hostapd/catlink.conf
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

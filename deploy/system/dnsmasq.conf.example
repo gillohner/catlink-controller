@@ -1,0 +1,16 @@
+# /etc/catlink/dnsmasq.conf: DHCP + DNS for the hotspot only (separate dnsmasq instance).
+port=53
+interface=AP_IFACE
+bind-dynamic
+except-interface=lo
+no-hosts
+no-resolv
+server=1.1.1.1
+server=1.0.0.1
+dhcp-range=10.42.0.10,10.42.0.200,12h
+dhcp-option=option:router,GATEWAY_IP
+dhcp-option=option:dns-server,GATEWAY_IP
+dhcp-host=DEVICE_WIFI_MAC,DEVICE_IP,catlink-c08,infinite
+dhcp-authoritative
+dhcp-leasefile=/var/lib/catlink/dnsmasq.leases
+log-dhcp
