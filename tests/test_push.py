@@ -28,6 +28,17 @@ class PushTests(unittest.TestCase):
             self.assertEqual(len(received), 2)
             self.assertEqual(received[0], ('/visits', 'Bearer test-token', b'A cat entered the litter box.'))
             self.assertIn(b'4.81 kg', received[1][2])
+            self.assertNotIn(b'Probably', received[1][2])
+            config['cats'] = [{'name': 'Pua', 'min_kg': 3.5, 'max_kg': 4.2},
+                              {'name': 'Joy', 'min_kg': 4.5, 'max_kg': 5.2}]
+            deliver(config, {'type': 'visit_completed', 'weight_kg': 4.81})
+            self.assertTrue(received[-1][2].startswith(b'Probably Joy: 4.81 kg'))
+            deliver(config, {'type': 'visit_completed', 'weight_kg': 4.35})
+            self.assertNotIn(b'Probably', received[-1][2])
+            config['cats'][1]['min_kg'] = 4.0
+            deliver(config, {'type': 'visit_completed', 'weight_kg': 4.1})
+            self.assertNotIn(b'Probably', received[-1][2])
+            del config['cats']
             config['backend'] = 'homeassistant_webhook'
             deliver(config, {'type': 'cat_left', 'provisional': True})
             self.assertEqual(json.loads(received[-1][2]), {'type': 'cat_left', 'provisional': True})

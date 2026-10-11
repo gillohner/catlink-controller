@@ -7,12 +7,26 @@ import subprocess
 import time
 
 
-def message(event):
+def guess_cat(weight_kg, cats):
+    """Name the cat only when exactly one configured weight band matches.
+
+    Bands come from the owner's private config after labelled visits; an empty
+    or ambiguous match yields None rather than a wrong name. Entry events never
+    carry a usable weight, so identity is only ever attached to completed visits.
+    """
+    matches = [cat['name'] for cat in cats or ()
+               if cat['min_kg'] <= weight_kg <= cat['max_kg']]
+    return matches[0] if len(matches) == 1 else None
+
+
+def message(event, cats=None):
     kind = event.get('type')
     if kind == 'cat_entered':
         return 'A cat entered the litter box.'
     if kind == 'visit_completed':
-        return f"Visit completed. Estimated weight: {event['weight_kg']:.2f} kg (provisional)."
+        name = guess_cat(event['weight_kg'], cats)
+        who = f"Probably {name}" if name else 'Visit completed'
+        return f"{who}: {event['weight_kg']:.2f} kg (provisional weight)."
     return None
 
 

@@ -27,7 +27,11 @@ user to display entry and completed-weight notifications. It reconnects if the
 controller restarts. Notifications missed while the consumer is stopped are
 not replayed.
 Events include `provisional: true`; completed reports include `weight_kg` and an
-unverified `duration_seconds_candidate`. The stream does not replay history;
+unverified `duration_seconds_candidate`. `catlink-history --config push.json`
+lists completed visits from the event log with per-cat totals. An optional
+private `cats` list in the push config (`[{"name", "min_kg", "max_kg"}]`) adds
+"Probably NAME" to completed-visit notifications when exactly one band matches;
+entry alerts never name a cat because the box reports no usable weight at entry. The stream does not replay history;
 `status` includes the most recent 100 events held in memory. Slow subscribers
 can lose older events; this is not a durable notification queue.
 

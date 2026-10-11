@@ -16,7 +16,7 @@ def deliver(config, event):
         data = json.dumps(event).encode()
         headers = {'Content-Type': 'application/json'}
     elif backend == 'ntfy':
-        text = message(event)
+        text = message(event, config.get('cats'))
         if not text:
             return
         data = text.encode()
