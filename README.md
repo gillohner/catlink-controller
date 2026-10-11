@@ -11,9 +11,14 @@ telemetry field meanings, and cloud-free cold startup remain unverified.
 No movement command is exposed. An optional Home Assistant webhook adapter is included but not verified on HA.
 
 Two labelled physical visits produced entry/exit transitions and completed-visit
-reports. The provisional completed weights were 3.84 kg and 4.81 kg,
-consistent with the owner's confirmation of their relative weights. Absolute weight
-calibration and long-term reliability still need verification. The decoder keeps
+reports with box readings of 3.84 kg and 4.81 kg, consistent with the owner's
+confirmation of their relative weights. Two known-weight tests on the second host
+(3.238 kg and 1.524 kg objects) read 2.46 kg and 1.33 kg: the box's scale reads
+low and not by a constant factor, so absolute weights need a per-box linear
+calibration (`calibration: {slope, intercept}` in the push config) and more
+points before they can be trusted. The completed report's bytes 2-3 are the
+visit duration in seconds from the first entry to the final exit; a brief
+entry that produces no report keeps its start time for the next report. The decoder keeps
 live occupancy separate from completed visits: brief re-entry can produce several
 occupancy transitions and only one completed report. Cat identity is not assigned
 automatically from these two samples.
@@ -30,7 +35,8 @@ Events include `provisional: true`; completed reports include `weight_kg` and an
 unverified `duration_seconds_candidate`. `catlink-history --config push.json`
 lists completed visits from the event log with per-cat totals. An optional
 private `cats` list in the push config (`[{"name", "min_kg", "max_kg"}]`) adds
-"Probably NAME" to completed-visit notifications when exactly one band matches;
+"Probably NAME" to completed-visit notifications when exactly one band matches
+the (calibrated, if configured) weight;
 entry alerts never name a cat because the box reports no usable weight at entry. The stream does not replay history;
 `status` includes the most recent 100 events held in memory. Slow subscribers
 can lose older events; this is not a durable notification queue.
@@ -86,7 +92,11 @@ layout; not every field's vendor meaning has been established.
 
 Observed commands: heartbeat `kind=3, subsystem=1, command=0x035a`; time request
 `kind=3, subsystem=0x5a, command=0x2a5a`; clock set
-`kind=1, subsystem=0x5a, command=0x0d5a`. The clock body contains zero, year minus
+`kind=1, subsystem=0x5a, command=0x0d5a`; completed-visit report
+`kind=3, subsystem=0x5a, command=0x025a` (body `0003`, duration u16, weight kg, hundredths);
+an unexplained device frame `command=0x0b5a` with body `0000` was seen once between
+visits. Heartbeat body bytes 42 and 44 carry occupancy; byte 8 changes while the
+box is occupied but does not track weight. The clock body contains zero, year minus
 2000, month, day, ISO weekday, hour, minute, second. The successful clock reply is
 `kind=2, subsystem=0x5a, command=0x0d5a, body=0000` on the same concrete RRPC topic.
 

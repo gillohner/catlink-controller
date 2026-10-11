@@ -38,7 +38,11 @@ class PushTests(unittest.TestCase):
             config['cats'][1]['min_kg'] = 4.0
             deliver(config, {'type': 'visit_completed', 'weight_kg': 4.1})
             self.assertNotIn(b'Probably', received[-1][2])
-            del config['cats']
+            config['cats'] = [{'name': 'Joy', 'min_kg': 5.8, 'max_kg': 7.5}]
+            config['calibration'] = {'slope': 0.729, 'intercept': 0.099}
+            deliver(config, {'type': 'visit_completed', 'weight_kg': 4.81})
+            self.assertEqual(received[-1][2], b'Probably Joy: 6.46 kg (calibrated; box reading 4.81 kg).')
+            del config['cats'], config['calibration']
             config['backend'] = 'homeassistant_webhook'
             deliver(config, {'type': 'cat_left', 'provisional': True})
             self.assertEqual(json.loads(received[-1][2]), {'type': 'cat_left', 'provisional': True})

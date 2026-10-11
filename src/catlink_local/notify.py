@@ -19,14 +19,28 @@ def guess_cat(weight_kg, cats):
     return matches[0] if len(matches) == 1 else None
 
 
-def message(event, cats=None):
+def calibrate(reported_kg, calibration):
+    """Invert the box's linear scale error: reading = slope * true + intercept.
+
+    The slope/intercept come from the owner's known-weight tests in private config.
+    Without a calibration the reported value is returned unchanged.
+    """
+    if not calibration:
+        return reported_kg
+    return round((reported_kg - calibration.get('intercept', 0.0)) / calibration['slope'], 2)
+
+
+def message(event, cats=None, calibration=None):
     kind = event.get('type')
     if kind == 'cat_entered':
         return 'A cat entered the litter box.'
     if kind == 'visit_completed':
-        name = guess_cat(event['weight_kg'], cats)
+        kg = calibrate(event['weight_kg'], calibration)
+        name = guess_cat(kg, cats)
         who = f"Probably {name}" if name else 'Visit completed'
-        return f"{who}: {event['weight_kg']:.2f} kg (provisional weight)."
+        if calibration:
+            return f"{who}: {kg:.2f} kg (calibrated; box reading {event['weight_kg']:.2f} kg)."
+        return f"{who}: {kg:.2f} kg (provisional weight)."
     return None
 
 
