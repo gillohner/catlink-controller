@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+build/
+dist/
+config.json
+*.pcap
+*.jsonl
+*.apk
+*.sock

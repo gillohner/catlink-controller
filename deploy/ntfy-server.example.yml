@@ -1,0 +1,8 @@
+# Replace paths with absolute paths belonging to your service user.
+listen-http: "10.42.0.1:18081"
+base-url: "http://10.42.0.1:18081"
+auth-file: "/ABSOLUTE/PRIVATE/STATE/ntfy-auth.db"
+auth-default-access: "deny-all"
+cache-file: "/ABSOLUTE/PRIVATE/STATE/ntfy-cache.db"
+cache-duration: "24h"
+enable-signup: false

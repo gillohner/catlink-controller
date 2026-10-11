@@ -1,0 +1,6 @@
+{
+  "backend": "homeassistant_webhook",
+  "url": "http://HOME_ASSISTANT_IP:8123/api/webhook/REPLACE_WITH_RANDOM_PRIVATE_ID",
+  "event_log": "~/.local/state/catlink-local/visits.jsonl",
+  "cursor": "~/.local/state/catlink-local/homeassistant.cursor"
+}

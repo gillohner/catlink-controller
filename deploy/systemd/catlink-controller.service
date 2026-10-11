@@ -1,0 +1,14 @@
+[Unit]
+Description=Local CATLINK C08 controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment=PYTHONPATH=%h/catlink-controller/src
+ExecStart=/usr/bin/python3 -m catlink_local.server --config %h/.config/catlink-local/controller.json
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,12 @@
+{
+  "bind": "10.42.0.1",
+  "port": 18830,
+  "device_ip": "10.42.0.17",
+  "mac": "020000000001",
+  "device_name": "REPLACE_WITH_DEVICE_NAME",
+  "product_key": "REPLACE_WITH_PRODUCT_KEY",
+  "timezone": "Europe/Zurich",
+  "admin_socket": "~/.local/state/catlink-local/control.sock",
+  "telemetry_log": "~/.local/state/catlink-local/telemetry.jsonl",
+  "event_log": "~/.local/state/catlink-local/visits.jsonl"
+}
