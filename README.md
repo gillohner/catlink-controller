@@ -17,7 +17,7 @@ occupancy transitions and only one completed report. Cat identity is not assigne
 automatically from these two samples.
 
 `catlink-ctl watch` streams new entry, exit, and completed-visit events as JSON
-through the private Unix socket. This is the interface for notification consumers;
+through the private Unix socket. This is the interface for notification consumers.
 The ntfy push bridge supports Android delivery; end-to-end lock-screen delivery
 still needs verification. An optional Home Assistant webhook adapter is included but not verified on HA.
 On a Linux desktop with `notify-send`, run `catlink-notify` as the logged-in
@@ -99,6 +99,7 @@ sessions, clock acknowledgements, and rejection of an unexpected device identity
 - [Android notifications](docs/notifications.md)
 - [Continuous operation](docs/services.md)
 - [Optional Home Assistant adapter](docs/homeassistant.md)
+- [Setup prompt for another laptop](docs/agent-handoff.md)
 
 Manual cleaning and other settings remain under investigation. They will only
 be exposed after their C08 commands and acknowledgements are verified.
