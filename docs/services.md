@@ -12,10 +12,10 @@ documented path, or edit the units' `PYTHONPATH`.
 
 ```sh
 mkdir -p ~/.config/systemd/user
-cp deploy/systemd/catlink-{controller,push,health}.service ~/.config/systemd/user/
+cp deploy/systemd/catlink-{controller,push,health,labels}.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now catlink-controller.service catlink-push.service catlink-health.service
-systemctl --user status catlink-controller.service catlink-push.service catlink-health.service
+systemctl --user enable --now catlink-controller.service catlink-push.service catlink-health.service catlink-labels.service
+systemctl --user status catlink-controller.service catlink-push.service catlink-health.service catlink-labels.service
 ```
 
 Stop any foreground research listener before starting the service on the same

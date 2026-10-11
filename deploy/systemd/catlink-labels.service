@@ -1,0 +1,13 @@
+[Unit]
+Description=CATLINK visit labels from the phone (ntfy)
+After=catlink-ntfy.service
+
+[Service]
+Environment=PYTHONPATH=%h/catlink-controller/src
+ExecStart=/usr/bin/python3 -m catlink_local.labels --config %h/.config/catlink-local/push.json
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

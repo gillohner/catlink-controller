@@ -15,6 +15,7 @@ catlink-notify = "catlink_local.notify:main"
 catlink-push = "catlink_local.push:main"
 catlink-pcap-frames = "catlink_local.pcap_frames:main"
 catlink-health = "catlink_local.health:main"
+catlink-labels = "catlink_local.labels:main"
 catlink-history = "catlink_local.history:main"
 
 [tool.setuptools.packages.find]

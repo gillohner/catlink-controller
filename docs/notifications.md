@@ -42,6 +42,25 @@ anonymous in that case. The self-hosted Android connection does not require
 Firebase. Android battery restrictions and loss of connectivity can delay
 delivery; verify with the screen locked.
 
+## Labelling visits from the phone
+
+Create a second topic the phone may write to and a read-only account for the
+label service:
+
+```sh
+ntfy access --config /path/to/server.yml phone catlink-labels rw
+ntfy user --config /path/to/server.yml add catlink-labeller
+ntfy access --config /path/to/server.yml catlink-labeller catlink-labels ro
+```
+
+Subscribe the phone to `catlink-labels` (same server and user). Add a `labels`
+section to the push config (`deploy/push.example.json`) and run
+`catlink-labels.service`. Messages typed into that topic such as `joy pee`,
+`pua poop`, `none`, `joy both 2` (second-most-recent visit) label the completed
+visit and are confirmed on the visits topic; a label typed while a visit is in
+progress waits for its report. Labels land in `labels.jsonl` and are scored by
+`catlink-history`.
+
 ## Bridge
 
 Copy `deploy/push.example.json` to a private config file (mode 600). Match
