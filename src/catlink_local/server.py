@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import signal
+import socket as socketlib
 import time
 from zoneinfo import ZoneInfo
 
@@ -211,18 +213,44 @@ async def run(config):
     controller = Controller(config)
     socket = Path(config['admin_socket']).expanduser()
     socket.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    # An existing socket requires explicit cleanup, preventing a second daemon
-    # from silently replacing the first daemon's control endpoint.
+    # A live socket belongs to another daemon and must not be replaced silently.
+    # A socket nobody answers on is left over from a non-graceful stop (e.g. a
+    # SIGKILL) and would otherwise keep the service crash-looping after a restart.
     if socket.exists():
-        raise FileExistsError(f'admin socket already exists: {socket}')
+        if admin_socket_alive(socket):
+            raise FileExistsError(f'admin socket already in use: {socket}')
+        socket.unlink()
     server = await asyncio.start_server(controller.device, config['bind'], config['port'])
     admin = await asyncio.start_unix_server(controller.admin, socket, limit=4096)
     socket.chmod(0o600)
+    stop = asyncio.get_running_loop().create_future()
+    for signum in (signal.SIGTERM, signal.SIGINT):
+        asyncio.get_running_loop().add_signal_handler(
+            signum, lambda: stop.done() or stop.set_result(None))
     try:
-        async with server, admin:
-            await asyncio.gather(server.serve_forever(), admin.serve_forever())
+        await stop
     finally:
+        # wait_closed() would otherwise block on the box's long-lived MQTT session.
+        if controller.writer is not None:
+            controller.writer.close()
+        for listener in (server, admin):
+            listener.close()
+            if hasattr(listener, 'close_clients'):  # Python 3.13+
+                listener.close_clients()
+        await asyncio.gather(server.wait_closed(), admin.wait_closed(), return_exceptions=True)
         socket.unlink(missing_ok=True)
+
+
+def admin_socket_alive(path):
+    probe = socketlib.socket(socketlib.AF_UNIX, socketlib.SOCK_STREAM)
+    probe.settimeout(1)
+    try:
+        probe.connect(str(path))
+        return True
+    except OSError:
+        return False
+    finally:
+        probe.close()
 
 
 def main():

@@ -33,7 +33,10 @@ controller restarts. Notifications missed while the consumer is stopped are
 not replayed.
 Events include `provisional: true`; completed reports include `weight_kg` and an
 unverified `duration_seconds_candidate`. `catlink-history --config push.json`
-lists completed visits from the event log with per-cat totals. An optional
+lists completed visits with calibrated weight, raw box reading, duration and the
+tare-relative scale residual after the cat left; `catlink-history label --cat NAME
+--deposit pee|poop|both|none` records what the owner observed so the cat bands and
+any deposit heuristic can be scored against reality (`cat guess vs label`). An optional
 private `cats` list in the push config (`[{"name", "min_kg", "max_kg"}]`) adds
 "Probably NAME" to completed-visit notifications when exactly one band matches
 the (calibrated, if configured) weight;
@@ -95,8 +98,13 @@ Observed commands: heartbeat `kind=3, subsystem=1, command=0x035a`; time request
 `kind=1, subsystem=0x5a, command=0x0d5a`; completed-visit report
 `kind=3, subsystem=0x5a, command=0x025a` (body `0003`, duration u16, weight kg, hundredths);
 an unexplained device frame `command=0x0b5a` with body `0000` was seen once between
-visits. Heartbeat body bytes 42 and 44 carry occupancy; byte 8 changes while the
-box is occupied but does not track weight. The clock body contains zero, year minus
+visits. Heartbeat body byte 42 follows the entry sensor, byte 44 the weight-present
+state, bytes 16-17 the live scale reading (same kg/hundredths encoding, relative to
+the box's own tare: an empty box reads 0.00-0.07 kg and slowly re-zeroes), bytes
+14-15 the box clock; byte 8 changes while occupied but does not track weight.
+Whether a deposit (tens of grams) is separable from the ~30 g tare noise using the
+post-exit residual and the visit duration is an open question that needs labelled
+visits; nothing is claimed yet. The clock body contains zero, year minus
 2000, month, day, ISO weekday, hour, minute, second. The successful clock reply is
 `kind=2, subsystem=0x5a, command=0x0d5a, body=0000` on the same concrete RRPC topic.
 

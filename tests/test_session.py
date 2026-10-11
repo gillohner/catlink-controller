@@ -114,3 +114,31 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class StaleSocketTests(unittest.IsolatedAsyncioTestCase):
+    async def test_run_replaces_a_dead_socket_and_stops_on_sigterm(self):
+        import os
+        import signal
+        import tempfile
+        from catlink_local.server import admin_socket_alive, run
+        with tempfile.TemporaryDirectory() as directory:
+            stale = Path(directory) / 'control.sock'
+            import socket
+            dead = socket.socket(socket.AF_UNIX)
+            dead.bind(str(stale))
+            dead.close()  # closing does not unlink: the path stays as a stale socket
+            self.assertTrue(stale.exists())
+            self.assertFalse(admin_socket_alive(stale))
+            config = {'mac': '020000000001', 'timezone': 'Europe/Zurich', 'product_key': 'p',
+                      'device_name': 'd', 'device_ip': '127.0.0.1', 'bind': '127.0.0.1',
+                      'port': 0, 'admin_socket': str(stale)}
+            task = asyncio.create_task(run(config))
+            for _ in range(50):
+                await asyncio.sleep(0.02)
+                if admin_socket_alive(stale):
+                    break
+            self.assertTrue(admin_socket_alive(stale))
+            os.kill(os.getpid(), signal.SIGTERM)
+            await asyncio.wait_for(task, 5)
+            self.assertFalse(stale.exists())
