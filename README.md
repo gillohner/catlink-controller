@@ -44,6 +44,18 @@ entry alerts never name a cat because the box reports no usable weight at entry.
 `status` includes the most recent 100 events held in memory. Slow subscribers
 can lose older events; this is not a durable notification queue.
 
+`catlink-health` (own user unit) polls the controller and sends a high-priority
+ntfy alert when no heartbeat has arrived for five minutes or the controller is
+unreachable for longer than a grace period, a recovery message afterwards, and an
+optional daily digest (visits per cat, cleaning cycles, weight range). Both were
+exercised on the deployed host by stopping the controller.
+
+In the box's automatic ("cat") mode a cleaning cycle follows each exit after a
+~5.5 minute delay. The heartbeat emitted at that moment carries body byte 2 = 1 and
+an `0x0b5a` frame follows about 80 s later; the decoder emits `cleaning_started`
+and `cleaning_finished` events (provisional, two cycles observed). Set
+`notify_cleaning` in the push config to be told about finished cycles.
+
 ## Run the experimental endpoint
 
 Requires Python 3.11 or later, Linux, and a network path that redirects the box's
@@ -97,8 +109,8 @@ Observed commands: heartbeat `kind=3, subsystem=1, command=0x035a`; time request
 `kind=3, subsystem=0x5a, command=0x2a5a`; clock set
 `kind=1, subsystem=0x5a, command=0x0d5a`; completed-visit report
 `kind=3, subsystem=0x5a, command=0x025a` (body `0003`, duration u16, weight kg, hundredths);
-an unexplained device frame `command=0x0b5a` with body `0000` was seen once between
-visits. Heartbeat body byte 42 follows the entry sensor, byte 44 the weight-present
+a device frame `command=0x0b5a` with body `0000` follows each automatic cleaning
+cycle and is read as its completion. Heartbeat body byte 42 follows the entry sensor, byte 44 the weight-present
 state, bytes 16-17 the live scale reading (same kg/hundredths encoding, relative to
 the box's own tare: an empty box reads 0.00-0.07 kg and slowly re-zeroes), bytes
 14-15 the box clock; byte 8 changes while occupied but does not track weight.

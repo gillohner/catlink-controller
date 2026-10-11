@@ -30,10 +30,14 @@ def calibrate(reported_kg, calibration):
     return round((reported_kg - calibration.get('intercept', 0.0)) / calibration['slope'], 2)
 
 
-def message(event, cats=None, calibration=None):
+def message(event, cats=None, calibration=None, notify_cleaning=False):
     kind = event.get('type')
     if kind == 'cat_entered':
         return 'A cat entered the litter box.'
+    if kind == 'cleaning_finished' and notify_cleaning:
+        return 'Litter box cleaning cycle finished.'
+    if kind in ('box_offline', 'box_online', 'digest'):
+        return event['text']
     if kind == 'visit_completed':
         kg = calibrate(event['weight_kg'], calibration)
         name = guess_cat(kg, cats)

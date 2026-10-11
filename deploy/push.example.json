@@ -4,9 +4,24 @@
   "password": "REPLACE_WITH_PRIVATE_PASSWORD",
   "event_log": "~/.local/state/catlink-local/visits.jsonl",
   "cursor": "~/.local/state/catlink-local/push.cursor",
-  "calibration": {"slope": 1.0, "intercept": 0.0},
+  "calibration": {
+    "slope": 1.0,
+    "intercept": 0.0
+  },
   "cats": [
-    {"name": "LIGHTER_CAT", "min_kg": 3.2, "max_kg": 4.3},
-    {"name": "HEAVIER_CAT", "min_kg": 4.35, "max_kg": 5.5}
-  ]
+    {
+      "name": "LIGHTER_CAT",
+      "min_kg": 3.2,
+      "max_kg": 4.3
+    },
+    {
+      "name": "HEAVIER_CAT",
+      "min_kg": 4.35,
+      "max_kg": 5.5
+    }
+  ],
+  "offline_after_seconds": 300,
+  "digest_hour": 8,
+  "timezone": "Europe/Zurich",
+  "notify_cleaning": false
 }

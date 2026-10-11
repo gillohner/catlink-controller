@@ -2,6 +2,9 @@
 
 HEARTBEAT = (3, 1, 0x035a)
 VISIT_REPORT = (3, 0x5a, 0x025a)
+# Seen once after each observed auto-clean, ~80 s after the heartbeat that flagged
+# byte 2; interpreted as "cleaning finished". Provisional until more cycles confirm it.
+CLEAN_FINISHED = (3, 0x5a, 0x0b5a)
 
 
 def weight_kg(high, low):
@@ -21,18 +24,26 @@ def heartbeat_fields(frame):
     body = frame.body
     return {'live_weight_kg': weight_kg(body[16], body[17]),
             'entry_sensor': body[42], 'weight_present': body[44],
+            # Byte 2 was 1 exactly in the heartbeat emitted when the box started its
+            # automatic clean (~5.5 min after the exit, "cat mode"), 0 otherwise.
+            'cleaning': body[2],
             'box_clock': f'{body[14]:02d}:{body[15]:02d}'}
 
 
 class VisitDecoder:
     def __init__(self):
         self.occupied = None
+        self.cleaning = False
 
     def feed(self, frame, received_at):
         events = []
         body = frame.body
         fields = heartbeat_fields(frame)
         if fields:
+            if fields['cleaning'] and not self.cleaning:
+                events.append({'type': 'cleaning_started', 'received_at': received_at,
+                               'provisional': True})
+            self.cleaning = bool(fields['cleaning'])
             flags = (fields['entry_sensor'], fields['weight_present'])
             if flags not in ((0, 0), (1, 1)):
                 return events
@@ -50,4 +61,7 @@ class VisitDecoder:
                                # Kept for existing consumers; the field is now understood.
                                'duration_seconds_candidate': int.from_bytes(body[2:4], 'big'),
                                'provisional': True})
+        elif (frame.kind, frame.subsystem, frame.command) == CLEAN_FINISHED and body == b'\0\0':
+            events.append({'type': 'cleaning_finished', 'received_at': received_at,
+                           'provisional': True})
         return events

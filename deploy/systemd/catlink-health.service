@@ -1,0 +1,13 @@
+[Unit]
+Description=CATLINK gateway health alerts and daily digest
+After=catlink-controller.service
+
+[Service]
+Environment=PYTHONPATH=%h/catlink-controller/src
+ExecStart=/usr/bin/python3 -m catlink_local.health --config %h/.config/catlink-local/push.json
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

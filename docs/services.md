@@ -12,15 +12,17 @@ documented path, or edit the units' `PYTHONPATH`.
 
 ```sh
 mkdir -p ~/.config/systemd/user
-cp deploy/systemd/catlink-{controller,push}.service ~/.config/systemd/user/
+cp deploy/systemd/catlink-{controller,push,health}.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now catlink-controller.service catlink-push.service
-systemctl --user status catlink-controller.service catlink-push.service
+systemctl --user enable --now catlink-controller.service catlink-push.service catlink-health.service
+systemctl --user status catlink-controller.service catlink-push.service catlink-health.service
 ```
 
 Stop any foreground research listener before starting the service on the same
-port. After an abrupt kill, confirm the controller is stopped before removing
-its stale Unix socket. Graceful shutdown normally removes it automatically.
+port. The controller stops cleanly on SIGTERM, closes the box's session and removes
+its admin socket; a socket left by a hard kill is replaced at start-up only if
+nothing answers on it. A restart disconnects the box for 10-40 s; `catlink-health`
+waits out a grace period before alerting.
 
 ## Root-side pieces
 
