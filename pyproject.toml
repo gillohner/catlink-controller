@@ -13,6 +13,7 @@ catlink-local = "catlink_local.server:main"
 catlink-ctl = "catlink_local.client:main"
 catlink-notify = "catlink_local.notify:main"
 catlink-push = "catlink_local.push:main"
+catlink-pcap-frames = "catlink_local.pcap_frames:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

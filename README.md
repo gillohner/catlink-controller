@@ -106,5 +106,21 @@ sessions, clock acknowledgements, and rejection of an unexpected device identity
 - [Optional Home Assistant adapter](docs/homeassistant.md)
 - [Setup prompt for another laptop](docs/agent-handoff.md)
 
+## Protocol research workflow
+
 Manual cleaning and other settings remain under investigation. They will only
-be exposed after their C08 commands and acknowledgements are verified.
+be exposed after their C08 commands and acknowledgements are verified. While the
+box is redirected to this controller, the vendor app cannot reach it, so the
+vendor's command frames can only be observed by letting the box talk to its
+broker for a supervised window:
+
+```sh
+# as root, owner present, box empty if a motor action will be triggered
+deploy/system/capture-vendor-session.sh /private/system.env /private/captures 300
+# then, as the service user:
+PYTHONPATH=src python3 -m catlink_local.pcap_frames /private/captures/vendor-*.pcap
+```
+
+The helper removes only the DNAT rule (the box keeps internet), records the
+plaintext MQTT session, and restores the redirection on exit. The decoder prints
+frames per direction with the device MAC masked; captures stay private.
