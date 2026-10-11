@@ -26,23 +26,32 @@ class PushTests(unittest.TestCase):
             deliver(config, {'type': 'visit_completed', 'weight_kg': 4.81})
             deliver(config, {'type': 'cat_left'})
             self.assertEqual(len(received), 2)
-            self.assertEqual(received[0], ('/visits', 'Bearer test-token', b'A cat entered the litter box.'))
-            self.assertIn(b'4.81 kg', received[1][2])
-            self.assertNotIn(b'Probably', received[1][2])
+            self.assertEqual(received[0], ('/visits', 'Bearer test-token', b'Cat entered the box'))
+            self.assertEqual(received[1][2], b'Cat 4.8 kg')
             config['cats'] = [{'name': 'Pua', 'min_kg': 3.5, 'max_kg': 4.2},
                               {'name': 'Joy', 'min_kg': 4.5, 'max_kg': 5.2}]
-            deliver(config, {'type': 'visit_completed', 'weight_kg': 4.81})
-            self.assertTrue(received[-1][2].startswith(b'Probably Joy: 4.81 kg'))
+            deliver(config, {'type': 'visit_completed', 'weight_kg': 4.81, 'duration_seconds': 52})
+            self.assertEqual(received[-1][2], b'Joy 4.8 kg, 52 s')
             deliver(config, {'type': 'visit_completed', 'weight_kg': 4.35})
-            self.assertNotIn(b'Probably', received[-1][2])
-            config['cats'][1]['min_kg'] = 4.0
+            self.assertEqual(received[-1][2], b'Cat 4.3 kg')
+            config['cats'][1]['min_kg'] = 4.0  # overlapping bands never name a cat
             deliver(config, {'type': 'visit_completed', 'weight_kg': 4.1})
-            self.assertNotIn(b'Probably', received[-1][2])
+            self.assertEqual(received[-1][2], b'Cat 4.1 kg')
             config['cats'] = [{'name': 'Joy', 'min_kg': 5.8, 'max_kg': 7.5}]
             config['calibration'] = {'slope': 0.729, 'intercept': 0.099}
             deliver(config, {'type': 'visit_completed', 'weight_kg': 4.81})
-            self.assertEqual(received[-1][2], b'Probably Joy: 6.46 kg (calibrated; box reading 4.81 kg).')
-            del config['cats'], config['calibration']
+            self.assertEqual(received[-1][2], b'Joy 6.5 kg')
+            deliver(config, {'type': 'deposit_estimate', 'weight_kg': 4.81, 'residual_kg': 0.05,
+                             'duration_seconds': 52})
+            self.assertEqual(received[-1][2], b'Joy: likely pee (+50 g, 52 s)')
+            deliver(config, {'type': 'deposit_estimate', 'weight_kg': 4.81, 'residual_kg': 0.02})
+            self.assertEqual(received[-1][2], b'Joy: likely poop (+20 g)')
+            deliver(config, {'type': 'deposit_estimate', 'weight_kg': 4.81, 'residual_kg': -0.01})
+            self.assertEqual(received[-1][2], b'Joy: nothing detected (-10 g)')
+            config['notify_deposit'] = False
+            deliver(config, {'type': 'deposit_estimate', 'weight_kg': 4.81, 'residual_kg': 0.05})
+            self.assertEqual(received[-1][2], b'Joy: nothing detected (-10 g)')
+            del config['cats'], config['calibration'], config['notify_deposit']
             config['backend'] = 'homeassistant_webhook'
             deliver(config, {'type': 'cat_left', 'provisional': True})
             self.assertEqual(json.loads(received[-1][2]), {'type': 'cat_left', 'provisional': True})

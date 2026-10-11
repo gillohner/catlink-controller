@@ -23,8 +23,8 @@ live occupancy separate from completed visits: brief re-entry can produce severa
 occupancy transitions and only one completed report. Cat identity is not assigned
 automatically from these two samples.
 
-`catlink-ctl watch` streams new entry, exit, and completed-visit events as JSON
-through the private Unix socket. This is the interface for notification consumers.
+`catlink-ctl watch` streams entry, exit, completed-visit, deposit-estimate and
+cleaning events as JSON through the private Unix socket. This is the interface for notification consumers.
 The ntfy push bridge supports Android delivery; end-to-end lock-screen delivery
 still needs verification. An optional Home Assistant webhook adapter is included but not verified on HA.
 On a Linux desktop with `notify-send`, run `catlink-notify` as the logged-in
@@ -114,9 +114,12 @@ cycle and is read as its completion. Heartbeat body byte 42 follows the entry se
 state, bytes 16-17 the live scale reading (same kg/hundredths encoding, relative to
 the box's own tare: an empty box reads 0.00-0.07 kg and slowly re-zeroes), bytes
 14-15 the box clock; byte 8 changes while occupied but does not track weight.
-Whether a deposit (tens of grams) is separable from the ~30 g tare noise using the
-post-exit residual and the visit duration is an open question that needs labelled
-visits; nothing is claimed yet. The clock body contains zero, year minus
+After each completed report the first empty heartbeat yields a `deposit_estimate`
+event: the post-exit residual relative to the pre-entry baseline. The push bridge
+turns it into "likely pee" (>= 40 g), "likely poop" (15-40 g) or "nothing detected";
+these thresholds are a heuristic against ~30 g tare noise and must be scored with
+`catlink-history label` before being trusted. Notification texts are deliberately
+short: "Cat entered the box", "Joy 6.8 kg, 52 s", "Joy: likely pee (+50 g, 52 s)". The clock body contains zero, year minus
 2000, month, day, ISO weekday, hour, minute, second. The successful clock reply is
 `kind=2, subsystem=0x5a, command=0x0d5a, body=0000` on the same concrete RRPC topic.
 

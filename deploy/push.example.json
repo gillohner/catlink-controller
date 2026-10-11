@@ -23,5 +23,10 @@
   "offline_after_seconds": 300,
   "digest_hour": 8,
   "timezone": "Europe/Zurich",
-  "notify_cleaning": false
+  "notify_cleaning": false,
+  "notify_deposit": true,
+  "deposit": {
+    "pee_kg": 0.04,
+    "poop_kg": 0.015
+  }
 }

@@ -16,12 +16,14 @@ def deliver(config, event):
         data = json.dumps(event).encode()
         headers = {'Content-Type': 'application/json'}
     elif backend == 'ntfy':
+        if event.get('type') == 'deposit_estimate' and not config.get('notify_deposit', True):
+            return
         text = message(event, config.get('cats'), config.get('calibration'),
-                       config.get('notify_cleaning', False))
+                       config.get('notify_cleaning', False), config.get('deposit'))
         if not text:
             return
         data = text.encode()
-        headers = {'Title': 'CATLINK litter box', 'Content-Type': 'text/plain; charset=utf-8'}
+        headers = {'Title': 'Litter box', 'Content-Type': 'text/plain; charset=utf-8'}
         if event.get('type') == 'box_offline':
             headers['Priority'] = 'high'
             headers['Tags'] = 'warning'

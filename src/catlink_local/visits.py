@@ -34,6 +34,9 @@ class VisitDecoder:
     def __init__(self):
         self.occupied = None
         self.cleaning = False
+        self.last_empty_kg = None     # most recent tare-relative reading with both flags clear
+        self.entry_baseline_kg = None  # that reading as of the last entry
+        self.pending_report = None    # completed report awaiting the first empty reading
 
     def feed(self, frame, received_at):
         events = []
@@ -52,7 +55,21 @@ class VisitDecoder:
                 events.append({'type': 'cat_entered' if occupied else 'cat_left',
                                'received_at': received_at, 'provisional': True,
                                'live_weight_kg': fields['live_weight_kg']})
+                if occupied:
+                    self.entry_baseline_kg = self.last_empty_kg
             self.occupied = occupied
+            if not occupied:
+                # The first empty reading after a completed report shows what stayed
+                # behind, relative to the pre-entry baseline. Near the ~30 g tare noise.
+                if self.pending_report and self.entry_baseline_kg is not None:
+                    report = self.pending_report
+                    events.append({'type': 'deposit_estimate', 'received_at': received_at,
+                                   'residual_kg': round(fields['live_weight_kg'] - self.entry_baseline_kg, 2),
+                                   'weight_kg': report['weight_kg'],
+                                   'duration_seconds': report['duration_seconds'],
+                                   'provisional': True})
+                self.pending_report = None
+                self.last_empty_kg = fields['live_weight_kg']
         elif (frame.kind, frame.subsystem, frame.command) == VISIT_REPORT:
             if len(body) == 6 and body[:2] == b'\x00\x03' and body[5] < 100:
                 events.append({'type': 'visit_completed', 'received_at': received_at,
@@ -61,6 +78,7 @@ class VisitDecoder:
                                # Kept for existing consumers; the field is now understood.
                                'duration_seconds_candidate': int.from_bytes(body[2:4], 'big'),
                                'provisional': True})
+                self.pending_report = events[-1]
         elif (frame.kind, frame.subsystem, frame.command) == CLEAN_FINISHED and body == b'\0\0':
             events.append({'type': 'cleaning_finished', 'received_at': received_at,
                            'provisional': True})
