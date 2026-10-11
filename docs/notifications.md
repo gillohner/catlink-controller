@@ -53,9 +53,11 @@ ntfy user --config /path/to/server.yml add catlink-labeller
 ntfy access --config /path/to/server.yml catlink-labeller catlink-labels ro
 ```
 
-Subscribe the phone to `catlink-labels` (same server and user). Add a `labels`
-section to the push config (`deploy/push.example.json`) and run
-`catlink-labels.service`. Messages typed into that topic such as `joy pee`,
+Typing into the visits topic itself is simpler: also grant `phone` write access
+to `catlink-visits` and `catlink-labeller` read access, and list both topic URLs in
+the `labels.url` array. Project notifications carry a title; untitled messages are
+treated as owner input. Add a `labels` section to the push config
+(`deploy/push.example.json`) and run `catlink-labels.service`. Messages such as `joy pee`,
 `pua poop`, `none`, `joy both 2` (second-most-recent visit) label the completed
 visit and are confirmed on the visits topic; a label typed while a visit is in
 progress waits for its report. Labels land in `labels.jsonl` and are scored by

@@ -71,16 +71,30 @@ def visit_in_progress(lines, now):
         and now - entered < PENDING_FOR
 
 
-def poll(config, since):
-    """Messages on the labels topic newer than `since` (an ntfy message id or 'all')."""
+def poll(config, url, since):
+    """Phone messages on a topic newer than `since` (an ntfy message id or a timestamp).
+
+    Notifications published by this project carry a title; untitled messages are
+    what the owner typed in the app, so a shared topic works as well as a
+    dedicated one.
+    """
     credentials = f"{config['username']}:{config['password']}".encode()
-    request = Request(f"{config['url']}/json?poll=1&since={since}",
+    request = Request(f"{url}/json?poll=1&since={since}",
                       headers={'Authorization': 'Basic ' + base64.b64encode(credentials).decode()})
     with urlopen(request, timeout=15) as response:
         for line in response:
             item = json.loads(line)
-            if item.get('event') == 'message':
+            if item.get('event') == 'message' and not item.get('title'):
                 yield item
+
+
+def pending_item(item, cat_names, config, pending):
+    parsed = parse(item.get('message', ''), cat_names)
+    if parsed:
+        pending.append((datetime.now(timezone.utc), parsed, item['message']))
+    else:
+        deliver(config, {'type': 'digest', 'text': f"Could not read label '{item.get('message', '')}'. "
+                         f"Use e.g. 'joy pee', 'pua poop', 'none', or 'joy both 2'."})
 
 
 def main():
@@ -95,19 +109,18 @@ def main():
     zone = ZoneInfo(config.get('timezone', 'Europe/Zurich'))
     cat_names = [cat['name'] for cat in config.get('cats', [])]
     os.umask(0o077)
+    urls = labels_config['url'] if isinstance(labels_config['url'], list) else [labels_config['url']]
     # First start ignores history: an old message must not relabel today's visit.
-    since = args.cursor.read_text().strip() if args.cursor.exists() else str(int(time.time()))
+    since = json.loads(args.cursor.read_text()) if args.cursor.exists() else {}
+    if not isinstance(since, dict):
+        since = {}
     pending = []  # labels sent before their visit's completed report arrived
     while True:
         try:
-            for item in poll(labels_config, since):
-                since = item['id']
-                parsed = parse(item.get('message', ''), cat_names)
-                if parsed:
-                    pending.append((datetime.now(timezone.utc), parsed, item['message']))
-                else:
-                    deliver(config, {'type': 'digest', 'text': f"Could not read label '{item.get('message', '')}'. "
-                                     f"Use e.g. 'joy pee', 'pua poop', 'none', or 'joy both 2'."})
+            for url in urls:
+                for item in poll(labels_config, url, since.get(url, str(int(time.time())))):
+                    since[url] = item['id']
+                    pending_item(item, cat_names, config, pending)
             if pending:
                 lines = args.event_log.read_text().splitlines() if args.event_log.exists() else []
                 now = datetime.now(timezone.utc)
@@ -128,7 +141,7 @@ def main():
                 pending = []
             # Advance the cursor only once nothing is pending, so a restart re-reads
             # labels that were still waiting for their visit's report.
-            args.cursor.write_text(since)
+            args.cursor.write_text(json.dumps(since))
         except (OSError, URLError, ValueError) as error:
             print(f'labels retry: {type(error).__name__}', flush=True)
             time.sleep(10)
