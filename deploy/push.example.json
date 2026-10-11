@@ -33,5 +33,7 @@
     "url": "http://127.0.0.1:18081/catlink-labels",
     "username": "catlink-labeller",
     "password": "REPLACE_WITH_PRIVATE_PASSWORD"
-  }
+  },
+  "safe_delay_minutes": 5,
+  "expect_auto_clean": true
 }

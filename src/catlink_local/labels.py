@@ -88,7 +88,34 @@ def poll(config, url, since):
                 yield item
 
 
-def pending_item(item, cat_names, config, pending):
+BIN_WORDS = {'full': 'full', 'emptied': 'emptied', 'empty': 'emptied', 'changed': 'emptied'}
+
+
+def bin_report(text):
+    """['full', 'emptied'] from "bin was full, emptied"; [] when not about the bin."""
+    words = re.findall(r'[a-z]+', text.lower())
+    kinds = [BIN_WORDS[w] for w in words if w in BIN_WORDS]
+    if not kinds:
+        return []
+    return sorted(set(kinds), key=['full', 'emptied'].index)
+
+
+def record_bin(path, kinds, text):
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    with os.fdopen(fd, 'a') as stream:
+        for kind in kinds:
+            stream.write(json.dumps({'at': datetime.now(timezone.utc).isoformat(), 'kind': kind,
+                                     'note': text, 'source': 'phone'}) + '\n')
+
+
+def pending_item(item, cat_names, config, pending, bins_path=None):
+    kinds = bin_report(item.get('message', ''))
+    if kinds and bins_path is not None:
+        record_bin(bins_path, kinds, item['message'])
+        deliver(config, {'type': 'digest', 'text': 'Noted: waste bin ' + ' and '.join(kinds)
+                         + '. Cleaning counter ' + ('reset.' if 'emptied' in kinds else 'kept.')})
+        return
     parsed = parse(item.get('message', ''), cat_names)
     if parsed:
         pending.append((datetime.now(timezone.utc), parsed, item['message']))
@@ -103,6 +130,7 @@ def main():
     parser.add_argument('--event-log', type=Path, default=STATE / 'visits.jsonl')
     parser.add_argument('--labels', type=Path, default=STATE / 'labels.jsonl')
     parser.add_argument('--cursor', type=Path, default=STATE / 'labels.cursor')
+    parser.add_argument('--bins', type=Path, default=STATE / 'bins.jsonl')
     args = parser.parse_args()
     config = json.loads(args.config.read_text())
     labels_config = config['labels']
@@ -120,7 +148,7 @@ def main():
             for url in urls:
                 for item in poll(labels_config, url, since.get(url, str(int(time.time())))):
                     since[url] = item['id']
-                    pending_item(item, cat_names, config, pending)
+                    pending_item(item, cat_names, config, pending, args.bins)
             if pending:
                 lines = args.event_log.read_text().splitlines() if args.event_log.exists() else []
                 now = datetime.now(timezone.utc)

@@ -121,7 +121,8 @@ def main():
     label.add_argument('--note')
     args = parser.parse_args()
 
-    config = json.loads(args.config.read_text()) if args.config else {}
+    from .learn import effective
+    config = effective(json.loads(args.config.read_text())) if args.config else {}
     cats, calibration = config.get('cats'), config.get('calibration')
     zone = ZoneInfo(args.timezone)
     rows = list(visits(args.event_log.read_text().splitlines(), cats, calibration)) \

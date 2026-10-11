@@ -7,6 +7,7 @@ from pathlib import Path
 import time
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+from .learn import effective
 from .notify import message
 
 
@@ -73,7 +74,7 @@ def main():
                     time.sleep(0.5)
                     continue
                 event = json.loads(line)
-                deliver(config, event)
+                deliver(effective(config), event)
                 offset = stream.tell()
                 temporary.write_text(str(offset))
                 temporary.replace(cursor)

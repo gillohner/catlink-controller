@@ -3,7 +3,9 @@ import json
 import unittest
 from zoneinfo import ZoneInfo
 
-from catlink_local.health import digest_text, heartbeat_age
+from datetime import timedelta
+
+from catlink_local.health import StatusWatch, digest_text, heartbeat_age, missed_clean
 
 
 class HealthTests(unittest.TestCase):
@@ -27,10 +29,38 @@ class HealthTests(unittest.TestCase):
                            datetime(2026, 10, 11, 6, 0, tzinfo=timezone.utc),
                            datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc), cats, None, ZoneInfo('UTC'))
         self.assertIn('2 visits (Joy 1, Pua 1)', text)
-        self.assertIn('1 cleaning cycles', text)
-        self.assertIn('Joy 4.81-4.81 kg', text)
+        self.assertIn('1 cleans', text)
+        self.assertIn('Joy 4.8-4.8 kg', text)
         self.assertNotIn('09:00', text)
 
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class WatchdogTests(unittest.TestCase):
+    def test_missed_clean(self):
+        visit = {'type': 'visit_completed', 'received_at': '2026-10-12T08:00:00+00:00', 'weight_kg': 4.8}
+        clean = {'type': 'cleaning_started', 'received_at': '2026-10-12T08:05:30+00:00'}
+        again = {'type': 'cat_entered', 'received_at': '2026-10-12T08:03:00+00:00'}
+        at = lambda m: datetime(2026, 10, 12, 8, m, tzinfo=timezone.utc)
+        delay = timedelta(minutes=5)
+        self.assertIsNone(missed_clean([visit], at(10), delay))          # still within the delay
+        self.assertEqual(missed_clean([visit], at(13), delay), visit)    # nothing started
+        self.assertIsNone(missed_clean([visit, clean], at(13), delay))
+        self.assertIsNone(missed_clean([visit, again], at(13), delay))   # a new visit restarted it
+        self.assertIsNone(missed_clean([visit], at(13) + timedelta(hours=3), delay))
+        self.assertIsNone(missed_clean([visit], at(13), delay, [at(6)]))   # flag seen in a heartbeat
+
+    def test_status_watch_needs_two_heartbeats_and_ignores_analog_bytes(self):
+        watch = StatusWatch()
+        base = bytearray(60)
+        for value in (191, 194, 197):
+            base[26] = value
+            watch.learn(bytes(base))
+        changed = bytearray(base)
+        changed[30] = 5
+        changed[26] = 199
+        self.assertEqual(watch.feed(bytes(changed)), [])
+        self.assertEqual(watch.feed(bytes(changed)), [(30, [0], 5)])
+        self.assertEqual(watch.feed(bytes(changed)), [])

@@ -50,6 +50,30 @@ unreachable for longer than a grace period, a recovery message afterwards, and a
 optional daily digest (visits per cat, cleaning cycles, weight range). Both were
 exercised on the deployed host by stopping the controller.
 
+## Self-tuning and watchdogs
+
+`catlink-health` re-learns hourly from the logs and writes `learned.json`, which
+the push bridge, history and label services overlay on the private config:
+
+- Cats: the configured cats are the whole household, so every visit is named. A
+  one-dimensional k-means over all visits (owner labels pinned, unlabelled visits
+  included) learns each cat's typical weight; bands become contiguous at the
+  midpoints. Config bands are only the starting prior.
+- Deposits: the scale noise floor is learned from quiet empty heartbeats; the
+  pee/poop split from labelled visits once at least three of each exist.
+- Missed clean: in sensor mode a visit with no cleaning cycle ~12 minutes later
+  means the box paused itself (full or missing bin, weight protection): alert.
+- Unknown status change: a heartbeat byte that never varied takes a new value on
+  two consecutive heartbeats: alert, and the bytes are kept in `alerts.jsonl` so
+  the warning field (e.g. bin full) can be decoded when it first happens.
+- Bin: replying "emptied" or "full" on the phone records bin events; cleaning cycles
+  since emptying are counted, the capacity is learned from "full" reports, and a
+  warning goes out at 85 %.
+
+The digest adds bin fill, guess accuracy and >= 5 % weight changes per cat (7-day
+median vs the previous 30 days). Weight calibration is not learnable from
+unlabelled data; it still needs known weights.
+
 In the box's automatic ("cat") mode a cleaning cycle follows each exit after a
 ~5.5 minute delay. The heartbeat emitted at that moment carries body byte 2 = 1 and
 an `0x0b5a` frame follows about 80 s later; the decoder emits `cleaning_started`
