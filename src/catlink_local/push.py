@@ -25,8 +25,10 @@ def deliver(config, event):
             return
         if (config.get('telegram') or {}).get('chat_id'):
             from .telegram import send_text
-            prefix = '\u26a0\ufe0f ' if event.get('type') == 'box_offline' else ''
-            send_text(config['telegram'], prefix + text)
+            from .tg_format import text as telegram_text
+            formatted = telegram_text(event, config)
+            if formatted:
+                send_text(config['telegram'], formatted)
         if not config.get('url'):
             return
         data = text.encode()
@@ -82,7 +84,8 @@ def send_report(config, event, state):
     save(state, record, png)
     if (config.get('telegram') or {}).get('chat_id'):
         from .telegram import send_photo
-        send_photo(config['telegram'], png, summary(record))
+        from .tg_format import report_caption
+        send_photo(config['telegram'], png, report_caption(record))
     if not config.get('url'):
         return
     headers = {'Title': 'Litter box', 'Filename': 'visit.png',

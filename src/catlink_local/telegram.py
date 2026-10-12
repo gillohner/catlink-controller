@@ -33,7 +33,7 @@ def _call(config, method, data, content_type):
 
 
 def send_text(config, text):
-    body = json.dumps({'chat_id': config['chat_id'], 'text': text,
+    body = json.dumps({'chat_id': config['chat_id'], 'text': text, 'parse_mode': 'HTML',
                        'disable_web_page_preview': True}).encode()
     return _call(config, 'sendMessage', body, 'application/json')
 
@@ -41,7 +41,8 @@ def send_text(config, text):
 def send_photo(config, png, caption):
     boundary = uuid.uuid4().hex
     parts = []
-    for name, value in (('chat_id', str(config['chat_id'])), ('caption', caption[:1024])):
+    for name, value in (('chat_id', str(config['chat_id'])), ('caption', caption[:1024]),
+                        ('parse_mode', 'HTML')):
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode())
     parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="photo"; filename="visit.png"\r\n'
                  'Content-Type: image/png\r\n\r\n'.encode() + png + b'\r\n')

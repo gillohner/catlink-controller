@@ -114,15 +114,16 @@ def pending_item(item, cat_names, config, pending, bins_path=None):
     kinds = bin_report(item.get('message', ''))
     if kinds and bins_path is not None:
         record_bin(bins_path, kinds, item['message'])
-        deliver(config, {'type': 'digest', 'text': 'Noted: waste bin ' + ' and '.join(kinds)
-                         + '. Cleaning counter ' + ('reset.' if 'emptied' in kinds else 'kept.')})
+        said = 'emptied' if 'emptied' in kinds else 'full'
+        deliver(config, {'type': 'digest', 'icon': '🗑', 'text': f'Got it, waste bin {said}'
+                         + ('\n\nCounting cleanings from zero again.' if said == 'emptied' else '')})
         return
     parsed = parse(item.get('message', ''), cat_names)
     if parsed:
         pending.append((datetime.now(timezone.utc), parsed, item['message']))
     else:
-        deliver(config, {'type': 'digest', 'text': f"Could not read label '{item.get('message', '')}'. "
-                         f"Use e.g. 'joy pee', 'pua poop', 'none', or 'joy both 2'."})
+        deliver(config, {'type': 'digest', 'icon': '❓', 'text': "Sorry, I didn't get that\n\n"
+                         'Try "joy pee", "pua poop", "none" or "emptied".'})
 
 
 def main():
@@ -174,13 +175,16 @@ def main():
                 rows = list(visits(lines))
                 for sent_at, (cat, deposit, index), text in pending:
                     if len(rows) < index:
-                        deliver(config, {'type': 'digest', 'text': f"No visit to label for '{text}'."})
+                        deliver(config, {'type': 'digest', 'icon': '❓',
+                                         'text': "There's no visit to attach that to yet"})
                         continue
                     target = rows[-index]
                     record(args.labels, target, cat, deposit, text, zone)
-                    when = datetime.fromisoformat(target['completed_at']).astimezone(zone).strftime('%a %H:%M')
-                    deliver(config, {'type': 'digest', 'text': f"Labelled {when} visit: "
-                                     f"{cat or '?'}, {deposit or '?'}"})
+                    when = datetime.fromisoformat(target['completed_at']).astimezone(zone).strftime('%H:%M')
+                    said = ' '.join(x for x in (cat, {'pee': 'peed', 'poop': 'pooped', 'both': 'peed and pooped',
+                                                      'none': 'left nothing'}.get(deposit)) if x)
+                    deliver(config, {'type': 'digest', 'icon': '📝',
+                                     'text': f'Thanks, noted: {said}\n\nFor the visit at {when}.'})
                 pending = []
             # Advance the cursor only once nothing is pending, so a restart re-reads
             # labels that were still waiting for their visit's report.

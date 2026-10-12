@@ -28,9 +28,9 @@ class HealthTests(unittest.TestCase):
         text = digest_text([json.dumps(e) for e in events],
                            datetime(2026, 10, 11, 6, 0, tzinfo=timezone.utc),
                            datetime(2026, 10, 12, 6, 0, tzinfo=timezone.utc), cats, None, ZoneInfo('UTC'))
-        self.assertIn('2 visits (Joy 1, Pua 1)', text)
-        self.assertIn('1 cleans', text)
-        self.assertIn('Joy 4.8-4.8 kg', text)
+        self.assertIn('Joy: 1 visit, 4.8 kg', text)
+        self.assertIn('Pua: 1 visit, 3.8 kg', text)
+        self.assertIn('Cleaned itself 1 time', text)
         self.assertNotIn('09:00', text)
 
 

@@ -143,32 +143,32 @@ def trend(rows, name, now):
 
 
 def digest_text(lines, since, until, cats, calibration, zone, learned=None):
+    """Friendly daily summary: per-cat visits and weight, cleanings, bin, notable changes."""
     events = [json.loads(line) for line in lines if line.strip()]
     everything = list(visits([json.dumps(e) for e in events], cats, calibration))
     window = [e for e in events if since <= datetime.fromisoformat(e['received_at']) < until]
     rows = [r for r in visits([json.dumps(e) for e in window], cats, calibration)]
-    per_cat = Counter(r['cat'] or 'unidentified' for r in rows)
     cleans = sum(e['type'] == 'cleaning_finished' for e in window)
-    parts = [f"{len(rows)} visits" + (f" ({', '.join(f'{k} {v}' for k, v in sorted(per_cat.items()))})" if rows else ''),
-             f'{cleans} cleans']
-    for name in sorted({r['cat'] for r in rows if r['cat']}):
-        weights = [r['weight_kg'] for r in rows if r['cat'] == name]
-        text = f'{name} {min(weights):.1f}-{max(weights):.1f} kg'
+    day = since.astimezone(zone).strftime('%A')
+    lines_out = []
+    for name in sorted({r['cat'] or 'Unknown cat' for r in rows}):
+        mine = [r for r in rows if (r['cat'] or 'Unknown cat') == name]
+        weights = sorted(r['weight_kg'] for r in mine)
+        line = f"🐈 {name}: {len(mine)} visit{'s' if len(mine) != 1 else ''}, {weights[len(weights) // 2]:.1f} kg"
         change = trend(everything, name, until)
         if change is not None and abs(change) >= 5:
-            text += f' (weight {change:+.0f}% vs last month)'
-        parts.append(text)
+            line += f" ({'up' if change > 0 else 'down'} {abs(change):.0f}% from last month)"
+        lines_out.append(line)
+    if not rows:
+        lines_out.append('🐈 No visits recorded')
+    lines_out.append(f"🧹 Cleaned itself {cleans} time{'s' if cleans != 1 else ''}")
     if learned:
         bin_info = learned.get('bin', {})
         if bin_info.get('cleans_since_emptied') is not None:
             capacity = bin_info.get('capacity_cleans')
-            parts.append(f"bin {bin_info['cleans_since_emptied']}" + (f'/{capacity}' if capacity else '')
-                         + ' cleans since emptied')
-        accuracy = learned.get('cat_accuracy', {})
-        if accuracy.get('labelled'):
-            parts.append(f"cat guesses {accuracy['correct']}/{accuracy['labelled']} right")
-    day = since.astimezone(zone).strftime('%a %d %b')
-    return f'Digest {day}: ' + '; '.join(parts)
+            lines_out.append(f"🗑 Waste bin: {bin_info['cleans_since_emptied']} cleanings since emptied"
+                             + (f' (full at about {capacity})' if capacity else ''))
+    return f'How {day} went at the litter box\n\n' + '\n'.join(lines_out)
 
 
 def main():
@@ -222,20 +222,23 @@ def main():
         try:
             age = heartbeat_age(controller_status(args.socket), now)
             reason = None if age is not None and age < offline_after else \
-                ('no heartbeat for %d min' % ((age or 0) // 60) if age is not None else 'box not connected')
-        except (OSError, ValueError) as error:
-            reason = f'controller unreachable ({type(error).__name__})'
+                (f'No signal from it for {int((age or 0) // 60)} minutes.' if age is not None
+                 else 'It is not connected to the laptop.')
+        except (OSError, ValueError):
+            reason = 'The monitoring program on the laptop is not responding.'
         trouble_since = (trouble_since or now) if reason else None
         if reason and (now - trouble_since).total_seconds() < grace:
             reason = None
         try:
             if reason and offline_since is None:
                 offline_since = now
-                alert('offline', f'Box monitoring offline: {reason}')
+                alert('offline', f"The litter box isn't reporting\n\n{reason} "
+                      "You won't get visit alerts until it's back.", reason=reason)
             elif not reason and offline_since is not None and trouble_since is None:
                 minutes = int((now - offline_since).total_seconds() // 60)
                 offline_since = None
-                deliver(config, {'type': 'box_online', 'text': f'Box monitoring back after {minutes} min'})
+                deliver(config, {'type': 'box_online',
+                                 'text': f'The litter box is reporting again\n\nIt was quiet for {minutes} minutes.'})
 
             # Unknown status changes, from heartbeats appended since the last pass.
             if telemetry.exists() and telemetry.stat().st_size > offset:
@@ -252,8 +255,9 @@ def main():
                     # Date fields may roll over at midnight; that is not a warning.
                     if changes and not (local.hour == 0 and local.minute < 5):
                         detail = ', '.join(f'byte {i}: {old} -> {new}' for i, old, new in changes)
-                        alert('status_change', 'Box status changed (not yet decoded). Check the '
-                              'warning light: full or missing bin? Reply "full"/"emptied" if so.',
+                        alert('status_change', 'The litter box changed its status\n\nPlease check its '
+                              'warning light. Is the waste bin full or not pushed in?\n\n'
+                              'Reply "full" or "emptied" if that was it.',
                               detail=detail, body_hex=body.hex())
 
             # Missed automatic clean.
@@ -263,8 +267,9 @@ def main():
                 if visit and visit['received_at'] != alerted_visit:
                     alerted_visit = visit['received_at']
                     when = datetime.fromisoformat(visit['received_at']).astimezone(zone).strftime('%H:%M')
-                    alert('missed_clean', f'Box did not clean after the {when} visit. Waste bin full, '
-                          f'bin missing or warning light? Reply "emptied" after emptying.',
+                    alert('missed_clean', f"The litter box didn't clean itself\n\nIt should have after "
+                          f'the {when} visit. Is the waste bin full or not pushed in, or is a warning '
+                          f'light on?\n\nReply "emptied" once you have emptied it.',
                           visit=visit['received_at'])
 
             # Re-learn hourly; warn when the bin approaches its learned capacity.
@@ -276,15 +281,15 @@ def main():
             if capacity and used is not None and used >= 0.85 * capacity and \
                     warned_bin_at != bin_info['last_emptied']:
                 warned_bin_at = bin_info['last_emptied']
-                alert('bin_nearly_full', f'Waste bin probably nearly full ({used} of ~{capacity} cleans). '
-                      f'Reply "emptied" after emptying.')
+                alert('bin_nearly_full', f'The waste bin is probably almost full\n\n{used} of about '
+                      f'{capacity} cleanings since it was last emptied.\n\nReply "emptied" once you have emptied it.')
 
             local = now.astimezone(zone)
             if digest_hour is not None and local.hour >= digest_hour and last_digest_day != local.date():
                 learned = learn.run(base_config, args.state)
                 until = local.replace(hour=digest_hour, minute=0, second=0, microsecond=0)
                 lines = log.read_text().splitlines() if log.exists() else []
-                deliver(config, {'type': 'digest', 'text': digest_text(
+                deliver(config, {'type': 'digest', 'icon': '📊', 'text': digest_text(
                     lines, until - timedelta(days=1), until, config.get('cats'),
                     config.get('calibration'), zone, learned)})
                 last_digest_day = local.date()
