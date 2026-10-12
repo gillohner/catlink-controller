@@ -47,3 +47,19 @@ def send_photo(config, png, caption):
                  'Content-Type: image/png\r\n\r\n'.encode() + png + b'\r\n')
     parts.append(f'--{boundary}--\r\n'.encode())
     return _call(config, 'sendPhoto', b''.join(parts), f'multipart/form-data; boundary={boundary}')
+
+
+def updates(config, offset, timeout=25):
+    """Long-poll incoming messages (only for a bot owned by this controller)."""
+    query = f'getUpdates?timeout={timeout}&allowed_updates=%5B%22message%22%5D'
+    if offset is not None:
+        query += f'&offset={offset}'
+    request = Request(f"https://api.telegram.org/bot{_token(config)}/{query}")
+    try:
+        with urlopen(request, timeout=timeout + 10) as response:
+            result = json.loads(response.read())
+    except HTTPError as error:
+        detail = error.read()[:200].decode(errors='replace')
+        error.close()
+        raise OSError(f'telegram getUpdates failed: {error.code} {detail}') from None
+    return result.get('result', [])

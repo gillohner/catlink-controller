@@ -187,6 +187,7 @@ sessions, clock acknowledgements, and rejection of an unexpected device identity
 - [Android notifications](docs/notifications.md)
 - [Continuous operation](docs/services.md)
 - [Optional Home Assistant adapter](docs/homeassistant.md)
+- [Telegram alerts and assistant agent](docs/assistant.md)
 - [Setup prompt for another laptop](docs/agent-handoff.md)
 
 ## Protocol research workflow

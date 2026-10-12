@@ -5,9 +5,11 @@
 Add a `telegram` section to the push config with a bot token file (mode 600) and
 the chat ID. Every alert the bridge, health and label services send then also goes
 to Telegram, and the per-visit report arrives as a photo with the summary as caption.
-Remove `url` to stop sending to ntfy. Delivery is send-only (`sendMessage`,
-`sendPhoto`): the bot can be shared with a conversational agent, which keeps
-receiving messages; owner replies reach the controller through the agent.
+Remove `url` to stop sending to ntfy. Use a bot dedicated to the litter box: with
+`read_replies` the label service long-polls that bot and accepts replies ("joy pee",
+"emptied") only from `allowed_chat_ids`. Delivery alone is send-only, so a bot shared
+with a conversational agent also works for alerts, but then replies must be relayed
+by the agent (two readers of one bot conflict).
 
 ## Assistant API
 

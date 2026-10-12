@@ -37,7 +37,11 @@
   "safe_delay_minutes": 5,
   "expect_auto_clean": true,
   "telegram": {
-    "token_file": "~/.config/catlink-local/telegram.token",
-    "chat_id": "REPLACE_WITH_CHAT_ID"
+    "token_file": "~/.config/catlink-local/telegram-box.token",
+    "chat_id": "REPLACE_WITH_CHAT_ID",
+    "read_replies": true,
+    "allowed_chat_ids": [
+      "REPLACE_WITH_CHAT_ID"
+    ]
   }
 }

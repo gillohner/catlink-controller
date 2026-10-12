@@ -5,8 +5,9 @@ description: Answer questions about Joy and Pua's litter box (CATLINK Scooper C0
 
 # CATLINK litter box (Joy and Pua)
 
-The box is run by a local controller on Gil's laptop. That laptop already sends
-real-time alerts to Telegram through this same bot: "Cat at the box", "Pua inside
+The box is run by a local controller on Gil's laptop. That laptop sends real-time
+alerts through its own Telegram bot, @joypua_bot (not this one), and reads the
+owners' replies there itself: "Cat at the box", "Pua inside
 (~5.1 kg)", "Pua 5.2 kg, 42 s", a visit summary with a scale graph, missed-clean /
 offline / bin warnings and a daily digest at 08:00. **Do not re-send or rephrase
 those alerts.** Your job: answer questions, record labels, spot trends.
@@ -29,7 +30,8 @@ Exit code 2 means the laptop is unreachable (tunnel down, laptop off): say so pl
 
 ## Replies to alerts
 
-When a user writes things like "joy pee", "pua poop", "that was Joy", "nothing",
+Replies to alerts normally go to @joypua_bot and are recorded by the laptop. When a
+user tells *you* things like "joy pee", "pua poop", "that was Joy", "nothing",
 "bin emptied", "bin was full": record it with `label` / `bin` (most recent visit
 unless they name a time; convert their local time to the UTC `completed_at` prefix
 from `visits`). Confirm in one short line. If a reply is ambiguous (which visit, which

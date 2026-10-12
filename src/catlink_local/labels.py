@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 from .history import STATE, visits
 from .push import deliver
+from .telegram import updates as tg_updates
 
 DEPOSIT_WORDS = {'pee': 'pee', 'piss': 'pee', 'urine': 'pee', 'wee': 'pee',
                  'poop': 'poop', 'poo': 'poop', 'shit': 'poop', 'crap': 'poop', 'stool': 'poop',
@@ -133,11 +134,13 @@ def main():
     parser.add_argument('--bins', type=Path, default=STATE / 'bins.jsonl')
     args = parser.parse_args()
     config = json.loads(args.config.read_text())
-    labels_config = config['labels']
+    labels_config = config.get('labels') or {}
     zone = ZoneInfo(config.get('timezone', 'Europe/Zurich'))
     cat_names = [cat['name'] for cat in config.get('cats', [])]
     os.umask(0o077)
-    urls = labels_config['url'] if isinstance(labels_config['url'], list) else [labels_config['url']]
+    urls = labels_config.get('url') or []
+    urls = urls if isinstance(urls, list) else [urls]
+    telegram = config.get('telegram') or {}
     # First start ignores history: an old message must not relabel today's visit.
     since = json.loads(args.cursor.read_text()) if args.cursor.exists() else {}
     if not isinstance(since, dict):
@@ -149,6 +152,18 @@ def main():
                 for item in poll(labels_config, url, since.get(url, str(int(time.time())))):
                     since[url] = item['id']
                     pending_item(item, cat_names, config, pending, args.bins)
+            if telegram.get('read_replies'):
+                # Only the owners' chats count; anything else sent to the bot is ignored.
+                allowed = {str(c) for c in telegram.get('allowed_chat_ids', [telegram['chat_id']])}
+                if 'telegram' not in since:
+                    # First start: skip messages sent before the service existed.
+                    backlog = tg_updates(telegram, None, timeout=0)
+                    since['telegram'] = backlog[-1]['update_id'] + 1 if backlog else 0
+                for update in tg_updates(telegram, since.get('telegram'), timeout=10):
+                    since['telegram'] = update['update_id'] + 1
+                    message = update.get('message') or {}
+                    if str(message.get('chat', {}).get('id')) in allowed and message.get('text'):
+                        pending_item({'message': message['text']}, cat_names, config, pending, args.bins)
             if pending:
                 lines = args.event_log.read_text().splitlines() if args.event_log.exists() else []
                 now = datetime.now(timezone.utc)
