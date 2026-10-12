@@ -1,0 +1,13 @@
+[Unit]
+Description=CATLINK assistant API (localhost only; reached through an SSH reverse tunnel)
+After=catlink-controller.service
+
+[Service]
+Environment=PYTHONPATH=%h/catlink-controller/src
+ExecStart=/usr/bin/python3 -m catlink_local.api --config %h/.config/catlink-local/push.json --token-file %h/.config/catlink-local/api.token
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

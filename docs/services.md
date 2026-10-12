@@ -12,7 +12,7 @@ documented path, or edit the units' `PYTHONPATH`.
 
 ```sh
 mkdir -p ~/.config/systemd/user
-cp deploy/systemd/catlink-{controller,push,health,labels}.service ~/.config/systemd/user/
+cp deploy/systemd/catlink-{controller,push,health,labels,api}.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now catlink-controller.service catlink-push.service catlink-health.service catlink-labels.service
 systemctl --user status catlink-controller.service catlink-push.service catlink-health.service catlink-labels.service

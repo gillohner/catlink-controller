@@ -45,10 +45,10 @@ def parse(text, cat_names):
     return cat, deposit, index
 
 
-def record(labels_path, visit, cat, deposit, note, zone):
+def record(labels_path, visit, cat, deposit, note, zone, source='phone'):
     entry = {'completed_at': visit['completed_at'], 'cat': cat, 'deposit': deposit,
              'note': note, 'labelled_at': datetime.now(zone).isoformat(timespec='seconds'),
-             'source': 'phone'}
+             'source': source}
     labels_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd = os.open(labels_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     with os.fdopen(fd, 'a') as stream:

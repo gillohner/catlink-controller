@@ -1,0 +1,16 @@
+[Unit]
+Description=Reverse SSH tunnel exposing the CATLINK assistant API to the agent host
+After=network-online.target catlink-api.service
+Wants=network-online.target
+
+[Service]
+# The agent host sees the API on its own 127.0.0.1:18090. Host alias from ~/.ssh/config.
+Environment=AGENT_HOST=coder.household-hermes
+ExecStart=/usr/bin/ssh -N -o BatchMode=yes -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+  -R 127.0.0.1:18090:127.0.0.1:18090 ${AGENT_HOST}
+Restart=always
+RestartSec=20
+
+[Install]
+WantedBy=default.target

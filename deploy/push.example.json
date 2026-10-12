@@ -35,5 +35,9 @@
     "password": "REPLACE_WITH_PRIVATE_PASSWORD"
   },
   "safe_delay_minutes": 5,
-  "expect_auto_clean": true
+  "expect_auto_clean": true,
+  "telegram": {
+    "token_file": "~/.config/catlink-local/telegram.token",
+    "chat_id": "REPLACE_WITH_CHAT_ID"
+  }
 }

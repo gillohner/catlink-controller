@@ -1,4 +1,4 @@
-"""Durable JSONL-to-ntfy delivery. Credentials stay in a private config file."""
+"""Durable JSONL-to-ntfy/Telegram delivery. Credentials stay in a private config file."""
 import argparse
 import base64
 import json
@@ -22,6 +22,12 @@ def deliver(config, event):
         text = message(event, config.get('cats'), config.get('calibration'),
                        config.get('notify_cleaning', False), config.get('deposit'))
         if not text:
+            return
+        if (config.get('telegram') or {}).get('chat_id'):
+            from .telegram import send_text
+            prefix = '\u26a0\ufe0f ' if event.get('type') == 'box_offline' else ''
+            send_text(config['telegram'], prefix + text)
+        if not config.get('url'):
             return
         data = text.encode()
         headers = {'Title': 'Litter box', 'Content-Type': 'text/plain; charset=utf-8'}
@@ -74,6 +80,11 @@ def send_report(config, event, state):
     record, points, marks = build(state, event, config)
     png = render(points, marks)
     save(state, record, png)
+    if (config.get('telegram') or {}).get('chat_id'):
+        from .telegram import send_photo
+        send_photo(config['telegram'], png, summary(record))
+    if not config.get('url'):
+        return
     headers = {'Title': 'Litter box', 'Filename': 'visit.png',
                'Message': summary(record).encode('ascii', 'replace').decode()}
     if config.get('username'):
