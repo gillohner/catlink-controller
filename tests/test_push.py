@@ -26,7 +26,7 @@ class PushTests(unittest.TestCase):
             deliver(config, {'type': 'visit_completed', 'weight_kg': 4.81})
             deliver(config, {'type': 'cat_left'})
             self.assertEqual(len(received), 2)
-            self.assertEqual(received[0], ('/visits', 'Bearer test-token', b'Cat entered the box'))
+            self.assertEqual(received[0], ('/visits', 'Bearer test-token', b'Cat inside'))
             self.assertEqual(received[1][2], b'Cat 4.8 kg')
             config['cats'] = [{'name': 'Pua', 'min_kg': 3.5, 'max_kg': 4.2},
                               {'name': 'Joy', 'min_kg': 4.5, 'max_kg': 5.2}]

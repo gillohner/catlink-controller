@@ -12,3 +12,5 @@ enable-login: true
 # The bridge, health and label services all poll from localhost; without this they
 # share one visitor rate limit and get HTTP 429.
 visitor-request-limit-exempt-hosts: "127.0.0.1"
+attachment-cache-dir: "/ABSOLUTE/PRIVATE/STATE/ntfy-attachments"
+attachment-expiry-duration: "72h"

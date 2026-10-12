@@ -48,8 +48,14 @@ def guess_deposit(residual_kg, pee_kg=DEPOSIT_PEE_KG, poop_kg=DEPOSIT_POOP_KG):
 def message(event, cats=None, calibration=None, notify_cleaning=False, deposit=None):
     """Short notification text; None for events that should not be pushed."""
     kind = event.get('type')
+    if kind == 'activity':
+        return 'Cat at the box'
     if kind == 'cat_entered':
-        return 'Cat entered the box'
+        live = event.get('live_weight_kg')
+        if live is None or live < 1.5:  # the box ignores anything lighter than a cat
+            return 'Cat inside'
+        kg = calibrate(live, calibration)
+        return f"{guess_cat(kg, cats) or 'Cat'} inside (~{kg:.1f} kg)"
     if kind == 'cleaning_finished' and notify_cleaning:
         return 'Box cleaned'
     if kind in ('box_offline', 'box_online', 'digest'):

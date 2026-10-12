@@ -49,21 +49,44 @@ ENTRY_QUIET = 600  # seconds
 
 
 def repeated_entry(event, recent):
-    """True for a further "cat entered" within one visit: paws, peeks, then the visit.
+    """True for a further "at the box"/"inside" alert within one visit.
 
-    `recent` holds the time of the last notified entry; a completed report ends the
-    visit. Entries are still logged, only the repeated notification is skipped.
+    Cats rest their paws, dig and peek before stepping in; each kind of alert goes
+    out once per visit. A completed report ends the visit. Events are still logged,
+    only the repeated notification is skipped.
     """
     from datetime import datetime
-    if event.get('type') == 'visit_completed':
-        recent.pop('entry', None)
+    kind = event.get('type')
+    if kind == 'visit_completed':
+        recent.clear()
         return False
-    if event.get('type') != 'cat_entered':
+    if kind not in ('cat_entered', 'activity'):
         return False
     at = datetime.fromisoformat(event['received_at'])
-    last = recent.get('entry')
-    recent['entry'] = at
+    last = recent.get(kind)
+    recent[kind] = at
     return last is not None and (at - last).total_seconds() < ENTRY_QUIET
+
+
+def send_report(config, event, state):
+    """Behaviour summary with the scale graph attached; also logged privately."""
+    from .behaviour import build, render, save, summary
+    record, points, marks = build(state, event, config)
+    png = render(points, marks)
+    save(state, record, png)
+    headers = {'Title': 'Litter box', 'Filename': 'visit.png',
+               'Message': summary(record).encode('ascii', 'replace').decode()}
+    if config.get('username'):
+        credentials = f"{config['username']}:{config['password']}".encode()
+        headers['Authorization'] = 'Basic ' + base64.b64encode(credentials).decode()
+    request = Request(config['url'], data=png, headers=headers, method='PUT')
+    try:
+        with urlopen(request, timeout=20) as response:
+            if not 200 <= response.status < 300:
+                raise OSError('destination did not accept report')
+    except HTTPError as error:
+        error.close()
+        raise
 
 
 def main():
@@ -96,7 +119,16 @@ def main():
                     time.sleep(0.5)
                     continue
                 event = json.loads(line)
-                if not repeated_entry(event, recent):
+                if repeated_entry(event, recent):
+                    pass
+                elif event.get('type') == 'deposit_estimate' and config.get('visit_report', True):
+                    try:
+                        send_report(effective(config), event, log.parent)
+                    except (OSError, ValueError, KeyError) as error:
+                        # The text line still goes out if the graph cannot be built.
+                        print(f'visit report failed: {type(error).__name__}: {error}', flush=True)
+                        deliver(effective(config), event)
+                else:
                     deliver(effective(config), event)
                 offset = stream.tell()
                 temporary.write_text(str(offset))

@@ -143,6 +143,17 @@ cycle and is read as its completion. Heartbeat body byte 42 follows the entry se
 state, bytes 16-17 the live scale reading (same kg/hundredths encoding, relative to
 the box's own tare: an empty box reads 0.00-0.07 kg and slowly re-zeroes), bytes
 14-15 the box clock; byte 8 changes while occupied but does not track weight.
+Per visit the phone receives, as information arrives: "Cat at the box" on the first
+spike (any sensor, or >= 0.5 kg on the scale, before the entry sensor), "Pua inside
+(~5.1 kg)" from the live scale once fully inside, "Pua 5.2 kg, 42 s" from the box's
+completed report, and after the exit a summary ("Pua: likely poop (+30 g). 5.2 kg;
+Joy usually 6.8. 1 check before, inside 33 s, box 42 s.") with a PNG of every scale
+reading around the visit attached (blue = box reports occupied; dotted markers:
+orange activity, green entry, red exit, blue report, purple deposit estimate). The
+record and graph are kept in `behaviour.jsonl` and `graphs/`. The box only reports
+on state changes and every ~100 s, so the graph is a sequence of samples, not a
+continuous trace. Attachments need `attachment-cache-dir` on the ntfy server.
+
 Cats typically rest their paws on the rim and dig, peek in and out, then step in.
 The box reports each of those as entry/exit, folds them into one completed report
 (duration from the first entry) and may show a cat's paws on the scale before the

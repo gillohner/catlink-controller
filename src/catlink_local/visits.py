@@ -33,8 +33,18 @@ def heartbeat_fields(frame):
             'box_clock': f'{body[14]:02d}:{body[15]:02d}'}
 
 
+BURST_IDLE_SECONDS = 600
+
+
+def _seconds(a, b):
+    from datetime import datetime
+    return (datetime.fromisoformat(b) - datetime.fromisoformat(a)).total_seconds()
+
+
 class VisitDecoder:
     def __init__(self):
+        self.burst_since = None       # first activity of the current visit (paws, peeks)
+        self.last_busy = None
         self.occupied = None
         self.cleaning = False
         self.last_empty_kg = None     # most recent tare-relative reading with both flags clear
@@ -50,6 +60,18 @@ class VisitDecoder:
                 events.append({'type': 'cleaning_started', 'received_at': received_at,
                                'provisional': True})
             self.cleaning = bool(fields['cleaning'])
+            busy = bool(fields['entry_sensor'] or fields['weight_present']
+                        or fields['live_weight_kg'] >= EMPTY_MAX_KG)
+            if self.burst_since and not busy and self.last_busy and \
+                    _seconds(self.last_busy, received_at) > BURST_IDLE_SECONDS:
+                self.burst_since = None  # a peek that never became a visit
+            if busy and not self.cleaning:
+                if self.burst_since is None:
+                    self.burst_since = received_at
+                    # Earliest sign of a cat: paws on the rim or a sensor, before any entry.
+                    events.append({'type': 'activity', 'received_at': received_at,
+                                   'live_weight_kg': fields['live_weight_kg'], 'provisional': True})
+                self.last_busy = received_at
             flags = (fields['entry_sensor'], fields['weight_present'])
             if flags not in ((0, 0), (1, 1)):
                 return events
@@ -85,6 +107,8 @@ class VisitDecoder:
                                'duration_seconds_candidate': int.from_bytes(body[2:4], 'big'),
                                'provisional': True})
                 self.pending_report = events[-1]
+                events[-1]['activity_since'] = self.burst_since
+                self.burst_since = None
         elif (frame.kind, frame.subsystem, frame.command) == CLEAN_FINISHED and body == b'\0\0':
             events.append({'type': 'cleaning_finished', 'received_at': received_at,
                            'provisional': True})
