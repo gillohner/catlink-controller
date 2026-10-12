@@ -58,7 +58,9 @@ class VisitDecoder:
                 events.append({'type': 'cat_entered' if occupied else 'cat_left',
                                'received_at': received_at, 'provisional': True,
                                'live_weight_kg': fields['live_weight_kg']})
-                if occupied:
+                # Cats rest their paws on the rim, dig and peek before stepping in; the
+                # baseline is the empty reading before the first entry of that burst.
+                if occupied and self.entry_baseline_kg is None:
                     self.entry_baseline_kg = self.last_empty_kg
             self.occupied = occupied
             if not occupied and fields['live_weight_kg'] < EMPTY_MAX_KG:
@@ -71,6 +73,7 @@ class VisitDecoder:
                                    'weight_kg': report['weight_kg'],
                                    'duration_seconds': report['duration_seconds'],
                                    'provisional': True})
+                    self.entry_baseline_kg = None
                 self.pending_report = None
                 self.last_empty_kg = fields['live_weight_kg']
         elif (frame.kind, frame.subsystem, frame.command) == VISIT_REPORT:

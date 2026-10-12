@@ -45,6 +45,27 @@ def deliver(config, event):
         raise
 
 
+ENTRY_QUIET = 600  # seconds
+
+
+def repeated_entry(event, recent):
+    """True for a further "cat entered" within one visit: paws, peeks, then the visit.
+
+    `recent` holds the time of the last notified entry; a completed report ends the
+    visit. Entries are still logged, only the repeated notification is skipped.
+    """
+    from datetime import datetime
+    if event.get('type') == 'visit_completed':
+        recent.pop('entry', None)
+        return False
+    if event.get('type') != 'cat_entered':
+        return False
+    at = datetime.fromisoformat(event['received_at'])
+    last = recent.get('entry')
+    recent['entry'] = at
+    return last is not None and (at - last).total_seconds() < ENTRY_QUIET
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=True, type=Path)
@@ -60,6 +81,7 @@ def main():
     if not cursor.exists():
         temporary.write_text(str(offset))
         temporary.replace(cursor)
+    recent = {}
     while True:
         try:
             if not log.exists():
@@ -74,7 +96,8 @@ def main():
                     time.sleep(0.5)
                     continue
                 event = json.loads(line)
-                deliver(effective(config), event)
+                if not repeated_entry(event, recent):
+                    deliver(effective(config), event)
                 offset = stream.tell()
                 temporary.write_text(str(offset))
                 temporary.replace(cursor)

@@ -143,6 +143,12 @@ cycle and is read as its completion. Heartbeat body byte 42 follows the entry se
 state, bytes 16-17 the live scale reading (same kg/hundredths encoding, relative to
 the box's own tare: an empty box reads 0.00-0.07 kg and slowly re-zeroes), bytes
 14-15 the box clock; byte 8 changes while occupied but does not track weight.
+Cats typically rest their paws on the rim and dig, peek in and out, then step in.
+The box reports each of those as entry/exit, folds them into one completed report
+(duration from the first entry) and may show a cat's paws on the scale before the
+entry sensor fires. The decoder therefore takes the deposit baseline from the
+last reading under 0.5 kg before the first entry of the burst, and the push bridge
+notifies only the first entry until the visit completes (or 10 minutes pass).
 After each completed report the first empty heartbeat yields a `deposit_estimate`
 event: the post-exit residual relative to the pre-entry baseline. The push bridge
 turns it into "likely pee" (>= 40 g), "likely poop" (15-40 g) or "nothing detected";

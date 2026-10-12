@@ -54,3 +54,21 @@ class VisitTests(unittest.TestCase):
             events.extend(decoder.feed(frame, 't'))
         deposits = [e for e in events if e['type'] == 'deposit_estimate']
         self.assertEqual([d['residual_kg'] for d in deposits], [0.03])
+
+    def test_baseline_comes_from_before_the_first_peek(self):
+        from catlink_local.protocol import Frame
+        mac = bytes.fromhex('020000000001')
+        def heartbeat(seq, kg, sensor, present):
+            body = bytearray(60)
+            body[16], body[17] = int(kg), round(kg % 1 * 100)
+            body[42], body[44] = sensor, present
+            return Frame(seq, mac, 3, 1, 0x035a, bytes(body))
+        report = Frame(9, mac, 3, 0x5a, 0x025a, bytes([0, 3, 0, 90, 3, 74]))
+        decoder = VisitDecoder()
+        events = []
+        # Peek, leave (scale shows dug litter as -0.04), go in, leave, report.
+        for frame in (heartbeat(1, 0.02, 0, 0), heartbeat(2, 3.6, 1, 1), heartbeat(3, -0.0, 0, 0),
+                      heartbeat(4, 3.7, 1, 1), heartbeat(5, 0.2, 0, 0), report, heartbeat(6, 0.06, 0, 0)):
+            events.extend(decoder.feed(frame, 't'))
+        deposits = [e for e in events if e['type'] == 'deposit_estimate']
+        self.assertEqual([d['residual_kg'] for d in deposits], [0.04])

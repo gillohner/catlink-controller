@@ -62,3 +62,16 @@ class PushTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join()
+
+
+class EntryDebounceTests(unittest.TestCase):
+    def test_peeks_before_a_visit_notify_once(self):
+        from catlink_local.push import repeated_entry
+        recent = {}
+        entry = lambda t: {'type': 'cat_entered', 'received_at': f'2026-10-12T10:{t}+00:00'}
+        self.assertFalse(repeated_entry(entry('00:00'), recent))
+        self.assertTrue(repeated_entry(entry('00:20'), recent))     # quick check, then back
+        self.assertTrue(repeated_entry(entry('01:10'), recent))     # actually goes in
+        self.assertFalse(repeated_entry({'type': 'visit_completed', 'received_at': '2026-10-12T10:02:00+00:00'}, recent))
+        self.assertFalse(repeated_entry(entry('03:00'), recent))    # the other cat right after
+        self.assertFalse(repeated_entry(entry('20:00'), recent))    # a peek much later
