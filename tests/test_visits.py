@@ -36,3 +36,21 @@ class VisitTests(unittest.TestCase):
         self.assertEqual(deposits[0]['residual_kg'], 0.05)   # 0.07 after minus 0.02 before entry
         self.assertEqual(deposits[0]['weight_kg'], 4.81)
         self.assertEqual(deposits[0]['duration_seconds'], 52)
+
+    def test_paws_on_the_scale_before_the_sensor_are_not_a_baseline(self):
+        from catlink_local.protocol import Frame
+        mac = bytes.fromhex('020000000001')
+        def heartbeat(seq, kg, sensor, present):
+            body = bytearray(60)
+            body[16], body[17] = int(kg), round(kg % 1 * 100)
+            body[42], body[44] = sensor, present
+            return Frame(seq, mac, 3, 1, 0x035a, bytes(body))
+        report = Frame(9, mac, 3, 0x5a, 0x025a, bytes([0, 3, 0, 42, 3, 74]))
+        decoder = VisitDecoder()
+        events = []
+        # Observed 2026-10-12: 1.01 kg with both flags clear right before the entry.
+        for frame in (heartbeat(1, 0.0, 0, 0), heartbeat(2, 1.01, 0, 0), heartbeat(3, 1.16, 1, 0),
+                      heartbeat(4, 3.71, 1, 1), heartbeat(5, 0.18, 0, 0), report, heartbeat(6, 0.03, 0, 0)):
+            events.extend(decoder.feed(frame, 't'))
+        deposits = [e for e in events if e['type'] == 'deposit_estimate']
+        self.assertEqual([d['residual_kg'] for d in deposits], [0.03])

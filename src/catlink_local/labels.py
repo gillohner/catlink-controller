@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import re
 import time
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
@@ -154,7 +154,7 @@ def main():
                 now = datetime.now(timezone.utc)
                 # A label typed right after "Cat entered" waits for that visit's report.
                 if visit_in_progress(lines, now) and now - pending[0][0] < PENDING_FOR:
-                    time.sleep(5)
+                    time.sleep(15)
                     continue
                 rows = list(visits(lines))
                 for sent_at, (cat, deposit, index), text in pending:
@@ -171,9 +171,10 @@ def main():
             # labels that were still waiting for their visit's report.
             args.cursor.write_text(json.dumps(since))
         except (OSError, URLError, ValueError) as error:
-            print(f'labels retry: {type(error).__name__}', flush=True)
+            detail = f' {error.code} {error.url}' if isinstance(error, HTTPError) else f' {error}'
+            print(f'labels retry: {type(error).__name__}{detail}', flush=True)
             time.sleep(10)
-        time.sleep(5)
+        time.sleep(15)
 
 
 if __name__ == '__main__':

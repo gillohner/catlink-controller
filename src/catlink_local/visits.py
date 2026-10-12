@@ -1,6 +1,9 @@
 """Provisional C08 visit decoding, based on labelled physical visits and known weights."""
 
 HEARTBEAT = (3, 1, 0x035a)
+# A tare-relative reading this high means something is on the scale even when the
+# entry/presence flags are still clear (a cat's paws just before the sensor fires).
+EMPTY_MAX_KG = 0.5
 VISIT_REPORT = (3, 0x5a, 0x025a)
 # Seen once after each observed auto-clean, ~80 s after the heartbeat that flagged
 # byte 2; interpreted as "cleaning finished". Provisional until more cycles confirm it.
@@ -58,7 +61,7 @@ class VisitDecoder:
                 if occupied:
                     self.entry_baseline_kg = self.last_empty_kg
             self.occupied = occupied
-            if not occupied:
+            if not occupied and fields['live_weight_kg'] < EMPTY_MAX_KG:
                 # The first empty reading after a completed report shows what stayed
                 # behind, relative to the pre-entry baseline. Near the ~30 g tare noise.
                 if self.pending_report and self.entry_baseline_kg is not None:

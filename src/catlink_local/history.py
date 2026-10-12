@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 from .notify import calibrate, guess_cat
 from .protocol import Frame
-from .visits import heartbeat_fields
+from .visits import EMPTY_MAX_KG, heartbeat_fields
 
 STATE = Path('~/.local/state/catlink-local').expanduser()
 DEPOSITS = ('pee', 'poop', 'both', 'none', 'unknown')
@@ -65,7 +65,8 @@ def scale_readings(telemetry_lines):
             continue
         if fields:
             yield (datetime.fromisoformat(observation['received_at']),
-                   fields['live_weight_kg'], bool(fields['weight_present'] or fields['entry_sensor']))
+                   fields['live_weight_kg'], bool(fields['weight_present'] or fields['entry_sensor']
+                                                  or fields['live_weight_kg'] >= EMPTY_MAX_KG))
 
 
 def add_scale_context(rows, readings, window_seconds=360):
@@ -164,7 +165,9 @@ def main():
               f"{label.get('deposit') or ''}")
     totals = Counter(row['cat'] or '?' for row in rows)
     print(f"{len(rows)} completed visits" + (': ' + ', '.join(f'{k} {v}' for k, v in sorted(totals.items())) if rows else ''))
-    checked = [r for r in rows if r['label'] and r['label'].get('cat')]
+    names = {cat['name'] for cat in cats or ()}
+    # Calibration objects and other non-cat labels are not cat-guess outcomes.
+    checked = [r for r in rows if r['label'] and r['label'].get('cat') in names]
     if checked:
         right = sum(r['cat'] == r['label']['cat'] for r in checked)
         print(f'cat guess vs label: {right}/{len(checked)} correct')
