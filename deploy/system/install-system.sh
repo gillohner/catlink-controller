@@ -79,6 +79,7 @@ chmod 644 /etc/catlink/dnsmasq.conf
 dnsmasq --test --conf-file=/etc/catlink/dnsmasq.conf
 render "$HERE/catlink-hostapd.service" > /etc/systemd/system/catlink-hostapd.service
 render "$HERE/catlink-dnsmasq.service" > /etc/systemd/system/catlink-dnsmasq.service
+install -m 644 "$HERE/catlink-resume.service" /etc/systemd/system/catlink-resume.service
 
 echo "== nftables DNAT/NAT table and unit"
 render "$HERE/catlink.nft.example" > /etc/catlink/catlink.nft
@@ -108,7 +109,7 @@ echo "== enable units"
 systemctl daemon-reload
 systemctl enable --now catlink-ap-interface.service
 # Oneshot units stay "active"; restart so edited rules and configs are actually reloaded.
-systemctl enable catlink-nft.service catlink-hostapd.service catlink-dnsmasq.service
+systemctl enable catlink-nft.service catlink-hostapd.service catlink-dnsmasq.service catlink-resume.service
 systemctl restart catlink-nft.service
 systemctl restart catlink-hostapd.service
 systemctl restart catlink-dnsmasq.service

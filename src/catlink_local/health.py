@@ -44,6 +44,33 @@ def controller_status(path):
         return json.loads(connection.makefile().readline())
 
 
+def power_state(root=Path('/sys/class/power_supply')):
+    """(on_mains, battery_percent) from sysfs; None for values the host does not expose."""
+    mains = battery = None
+    for supply in root.glob('*') if root.exists() else []:
+        try:
+            kind = (supply / 'type').read_text().strip()
+            if kind == 'Mains':
+                mains = (mains or False) or (supply / 'online').read_text().strip() == '1'
+            elif kind == 'Battery' and battery is None:
+                battery = int((supply / 'capacity').read_text().strip())
+        except (OSError, ValueError):
+            continue
+    return mains, battery
+
+
+def hotspot_up(interface):
+    """True when the AP interface is broadcasting (iw shows an SSID); None if unknown."""
+    import subprocess
+    try:
+        out = subprocess.run(['iw', 'dev', interface, 'info'], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return False
+    return '\tssid ' in out.stdout
+
+
 def heartbeat_age(status, now):
     report = status.get('last_report')
     if not status.get('connected') or not report:
@@ -208,6 +235,8 @@ def main():
                           if a.get('kind') == 'missed_clean'), None)
     warned_bin_at = None
     offline_since = trouble_since = None
+    power_warned = {}
+    ap_interface = base_config.get('ap_interface', 'gilshare0')
     last_digest_day = datetime.now(zone).date() if digest_hour is not None and \
         datetime.now(zone).hour >= digest_hour else None
 
@@ -226,6 +255,9 @@ def main():
                  else 'It is not connected to the laptop.')
         except (OSError, ValueError):
             reason = 'The monitoring program on the laptop is not responding.'
+        if reason and hotspot_up(ap_interface) is False:
+            reason = ("The laptop's GilShare Wi-Fi for the box is down. Restart it with: "
+                      "sudo systemctl restart catlink-hostapd catlink-dnsmasq")
         trouble_since = (trouble_since or now) if reason else None
         if reason and (now - trouble_since).total_seconds() < grace:
             reason = None
@@ -239,6 +271,22 @@ def main():
                 offline_since = None
                 deliver(config, {'type': 'box_online',
                                  'text': f'The litter box is reporting again\n\nIt was quiet for {minutes} minutes.'})
+
+            # Laptop power: an unplugged charger empties the battery in a few hours and
+            # the host then suspends or shuts down, taking the box's Wi-Fi with it.
+            mains, battery = power_state()
+            if mains is False and not power_warned.get('unplugged'):
+                power_warned['unplugged'] = True
+                alert('unplugged', 'The litter box laptop is unplugged\n\nIt is running on battery'
+                      + (f' ({battery}%)' if battery is not None else '')
+                      + '. Please plug the charger back in, or monitoring stops when the battery runs out.')
+            if mains is False and battery is not None and battery <= 20 and not power_warned.get('low'):
+                power_warned['low'] = True
+                alert('battery_low', f'The litter box laptop is almost out of battery\n\n{battery}% left. '
+                      'Please plug in the charger now.')
+            if mains and power_warned:
+                power_warned.clear()
+                deliver(config, {'type': 'box_online', 'text': 'The litter box laptop is charging again'})
 
             # Unknown status changes, from heartbeats appended since the last pass.
             if telemetry.exists() and telemetry.stat().st_size > offset:

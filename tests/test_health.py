@@ -64,3 +64,21 @@ class WatchdogTests(unittest.TestCase):
         self.assertEqual(watch.feed(bytes(changed)), [])
         self.assertEqual(watch.feed(bytes(changed)), [(30, [0], 5)])
         self.assertEqual(watch.feed(bytes(changed)), [])
+
+
+class PowerTests(unittest.TestCase):
+    def test_power_state_from_sysfs(self):
+        import tempfile
+        from pathlib import Path
+        from catlink_local.health import power_state
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, kind, files in (('AC', 'Mains', {'online': '0'}), ('BAT0', 'Battery', {'capacity': '26'})):
+                (root / name).mkdir()
+                (root / name / 'type').write_text(kind + '\n')
+                for key, value in files.items():
+                    (root / name / key).write_text(value + '\n')
+            self.assertEqual(power_state(root), (False, 26))
+            (root / 'AC' / 'online').write_text('1\n')
+            self.assertEqual(power_state(root), (True, 26))
+        self.assertEqual(power_state(Path('/nonexistent')), (None, None))

@@ -1,0 +1,11 @@
+[Unit]
+Description=Restart the CATLINK hotspot after the host wakes from sleep
+# The AP interface does not resume beaconing on its own (seen after a low-battery suspend).
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart catlink-hostapd.service catlink-dnsmasq.service
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
